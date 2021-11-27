@@ -222,9 +222,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
     let config_file = std::fs::read(cli_ops.config_path)?;
     let config_toml: TomlOps = toml::from_slice(&config_file)?;
 
-    let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
-        .build()?;
+    let client = reqwest::Client::builder().build()?;
 
     let config_accounts: ProcessedConfigAccount = config_toml.try_into()?;
 
@@ -235,11 +233,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
     }
     .to_string();
     let acme_dir = acme2::DirectoryBuilder::new(acme_url)
-        .http_client(
-            reqwest::ClientBuilder::new()
-                .danger_accept_invalid_certs(true)
-                .build()?,
-        )
+        .http_client(reqwest::ClientBuilder::new().build()?)
         .build()
         .await?;
     process_config_account(config_accounts, acme_dir.clone(), client.clone()).await
