@@ -8,7 +8,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use sha2::Digest;
 use structopt::StructOpt;
-use tokio::{fs::File,io::AsyncWriteExt};
+use tokio::{fs::File, io::AsyncWriteExt};
 
 static ACME_URL_STAGING: &str = "https://acme-staging-v02.api.letsencrypt.org/directory";
 static ACME_URL: &str = "https://acme-v02.api.letsencrypt.org/directory";
@@ -55,7 +55,7 @@ fn json_delete_dns_txt_field_json(name: &str) -> String {
 
 fn key_auth_to_dns_txt(key_auth: &str) -> String {
     let hash = sha2::Sha256::digest(key_auth.as_bytes());
-    base64::encode_config(hash,base64::URL_SAFE_NO_PAD)
+    base64::encode_config(hash, base64::URL_SAFE_NO_PAD)
 }
 
 #[derive(Deserialize)]
@@ -81,7 +81,6 @@ impl TryInto<ProcessedConfigAccount> for TomlOps {
             output_file: self.output_file,
             staging: self.staging.unwrap_or(true),
             private_key,
-
         })
     }
 }
@@ -93,7 +92,7 @@ struct ProcessedConfigAccount {
     domain: String,
     online_token: String,
     output_file: PathBuf,
-    staging: bool
+    staging: bool,
 }
 
 // #[instrument(skip_all)]
@@ -115,12 +114,15 @@ async fn process_config_account(
         &config_account.online_token,
     )
     .await?;
-    tracing::info!("Writting certificate to file {}.", config_account.output_file.display());
+    tracing::info!(
+        "Writting certificate to file {}.",
+        config_account.output_file.display()
+    );
     let mut output_file = File::create(&config_account.output_file).await?;
     for c in certs {
         output_file.write_all(&c.to_pem()?).await?;
         output_file.write_all(b"\n").await?;
-    };
+    }
     Ok(())
 }
 
@@ -134,7 +136,7 @@ async fn process_config_account_domain(
     tracing::info!("Processing domain {}", &domain);
     let online_url = online_api_url(&domain);
     let order = acme2::OrderBuilder::new(account)
-        .add_dns_identifier(format!("*.{}",domain))
+        .add_dns_identifier(format!("*.{}", domain))
         .add_dns_identifier(domain)
         .build()
         .await?;
@@ -181,7 +183,7 @@ async fn process_config_account_domain(
     // Create a certificate signing request for the order, and request
     // the certificate.
     let order = order.finalize(acme2::Csr::Automatic(pkey)).await?;
-    
+
     // Poll the order every 5 seconds until it is in either the
     // `valid` or `invalid` state. Valid means that the certificate
     // has been provisioned, and is now ready for download.
@@ -192,7 +194,10 @@ async fn process_config_account_domain(
 
     // Download the certificate, and panic if it doesn't exist.
     tracing::info!("Downloading certificate.");
-    let cert = order.certificate().await?.ok_or_else(|| eyre!("Certificate was None"))?;
+    let cert = order
+        .certificate()
+        .await?
+        .ok_or_else(|| eyre!("Certificate was None"))?;
     assert!(cert.len() > 1);
 
     Ok(cert)
@@ -217,7 +222,9 @@ async fn main() -> color_eyre::eyre::Result<()> {
     let config_file = std::fs::read(cli_ops.config_path)?;
     let config_toml: TomlOps = toml::from_slice(&config_file)?;
 
-    let client = reqwest::Client::builder().danger_accept_invalid_certs(true).build()?;
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()?;
 
     let config_accounts: ProcessedConfigAccount = config_toml.try_into()?;
 
@@ -225,10 +232,13 @@ async fn main() -> color_eyre::eyre::Result<()> {
         ACME_URL_STAGING
     } else {
         ACME_URL
-    }.to_string();
+    }
+    .to_string();
     let acme_dir = acme2::DirectoryBuilder::new(acme_url)
         .http_client(
-            reqwest::ClientBuilder::new().danger_accept_invalid_certs(true).build()?
+            reqwest::ClientBuilder::new()
+                .danger_accept_invalid_certs(true)
+                .build()?,
         )
         .build()
         .await?;
