@@ -1,21 +1,25 @@
 [package]
+edition = "2021"
 name = "acme-validator-dns"
 version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 acme2 = "0.5"
-openssl = "0.10.38"
-futures = "0.3.17"
-tracing = "0.1.29"
-tracing-subscriber = "0.3.1"
+base64 = "0.13"
 color-eyre = "0.5"
 eyre = "*"
-tokio = {version = "1.14.0",features = ["macros","rt-multi-thread"]}
+futures = "0.3.17"
+openssl = "0.10.38"
 reqwest = "0.11.6"
-serde = {version = "1.0.130", features=["derive"]}
-base64 = "0.13"
-toml = "0.5.8"
+sha2 = "*"
 structopt = "0.3.25"
+toml = "0.5.8"
+tracing = "0.1.29"
+tracing-subscriber = "0.3.1"
+
+[dependencies.serde]
+features = ["derive"]
+version = "1.0.130"
+
+[dependencies.tokio]
+features = ["macros", "rt-multi-thread", "fs"]
+version = "1.14.0"
