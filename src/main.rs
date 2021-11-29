@@ -3,12 +3,16 @@
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use eyre::eyre;
-use openssl::pkey::{PKey, Private};
 use reqwest::Client;
-use serde::Deserialize;
 use sha2::Digest;
 use structopt::StructOpt;
 use tokio::{fs::File, io::AsyncWriteExt};
+
+mod dns;
+use dns::{DnsWorker, DnsWorkerHandle};
+mod interface;
+use interface::{ProcessedConfigAccount, TomlOps};
+
 
 static ACME_URL_STAGING: &str = "https://acme-staging-v02.api.letsencrypt.org/directory";
 static ACME_URL: &str = "https://acme-v02.api.letsencrypt.org/directory";
@@ -58,42 +62,6 @@ fn key_auth_to_dns_txt(key_auth: &str) -> String {
     base64::encode_config(hash, base64::URL_SAFE_NO_PAD)
 }
 
-#[derive(Deserialize)]
-struct TomlOps {
-    email: String,
-    domain: String,
-    private_key: String,
-    online_token: String,
-    output_file: PathBuf,
-    staging: Option<bool>,
-}
-
-impl TryInto<ProcessedConfigAccount> for TomlOps {
-    type Error = eyre::Error;
-
-    fn try_into(self) -> Result<ProcessedConfigAccount, Self::Error> {
-        let private_key =
-            openssl::rsa::Rsa::private_key_from_pem(self.private_key.as_bytes())?.try_into()?;
-        Ok(ProcessedConfigAccount {
-            email: self.email,
-            online_token: self.online_token,
-            domain: self.domain,
-            output_file: self.output_file,
-            staging: self.staging.unwrap_or(true),
-            private_key,
-        })
-    }
-}
-
-#[derive(Debug)]
-struct ProcessedConfigAccount {
-    email: String,
-    private_key: PKey<Private>,
-    domain: String,
-    online_token: String,
-    output_file: PathBuf,
-    staging: bool,
-}
 
 // #[instrument(skip_all)]
 async fn process_config_account(

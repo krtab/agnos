@@ -10,11 +10,12 @@ eyre = "*"
 futures = "0.3.17"
 openssl = "0.10.38"
 reqwest = "0.11.6"
-sha2 = "*"
+sha2 = "0.9.8"
 structopt = "0.3.25"
 toml = "0.5.8"
 tracing = "0.1.29"
 tracing-subscriber = "0.3.1"
+trust-dns-proto = "0.20.3"
 
 [dependencies.serde]
 features = ["derive"]
