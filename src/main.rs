@@ -72,7 +72,8 @@ impl TryInto<ProcessedConfigAccount> for TomlOps {
     type Error = eyre::Error;
 
     fn try_into(self) -> Result<ProcessedConfigAccount, Self::Error> {
-        let private_key = openssl::rsa::Rsa::private_key_from_pem(self.private_key.as_bytes())?.try_into()?;
+        let private_key =
+            openssl::rsa::Rsa::private_key_from_pem(self.private_key.as_bytes())?.try_into()?;
         Ok(ProcessedConfigAccount {
             email: self.email,
             online_token: self.online_token,
@@ -100,6 +101,35 @@ async fn process_config_account(
     acme_dir: Arc<acme2::Directory>,
     client: Client,
 ) -> eyre::Result<()> {
+    match tokio::fs::read(&config_account.output_file).await {
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::NotFound => (),
+            _ => {
+                eyre::bail!(e)
+            }
+        },
+        Ok(f) => {
+            tracing::info!("Checking validity of current cert");
+            let current_certs = openssl::x509::X509::stack_from_pem(&f)?;
+            let mut need_renewal = false;
+            let today_plus_validity = openssl::asn1::Asn1Time::days_from_now(30)?;
+            for c in current_certs {
+                let end = c.not_after();
+                let to_renew = end < today_plus_validity;
+                tracing::info!(
+                    "Found certificate for {:?} ending: {}. Need renewal: {}",
+                    c.subject_name(),
+                    end,
+                    to_renew
+                );
+                need_renewal |= to_renew;
+            }
+            if !need_renewal {
+                tracing::info!("No certificate requires renewal.");
+                return Ok(());
+            }
+        }
+    };
     let account = acme2::AccountBuilder::new(acme_dir.clone())
         .contact(vec![format!("mailto:{}", config_account.email)])
         .terms_of_service_agreed(true)
@@ -147,6 +177,7 @@ async fn process_config_account_domain(
             .key_authorization()?
             .ok_or_else(|| eyre!("Challenge's key was None"))?;
         let txt_value = key_auth_to_dns_txt(&key);
+        tracing::info!("TXT value: {}", txt_value);
         tracing::info!("Adding challenge to DNS zone.");
         let request = client
             .patch(&online_url)
@@ -170,7 +201,8 @@ async fn process_config_account_domain(
             .build()?;
         client.execute(request).await?.error_for_status()?;
         let authorization = auth.wait_done(Duration::from_secs(5), 10).await?;
-        assert_eq!(authorization.status, acme2::AuthorizationStatus::Valid)
+        assert_eq!(authorization.status, acme2::AuthorizationStatus::Valid);
+        tokio::time::sleep(Duration::from_secs(10)).await;
     }
     tracing::info!("Waiting for order to be ready.");
     let order = order.wait_ready(Duration::from_secs(5), 3).await?;
