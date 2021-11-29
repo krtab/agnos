@@ -72,9 +72,7 @@ impl TryInto<ProcessedConfigAccount> for TomlOps {
     type Error = eyre::Error;
 
     fn try_into(self) -> Result<ProcessedConfigAccount, Self::Error> {
-        let pv_key_no_whitespace : Vec<u8> = self.private_key.split_whitespace().flat_map(|s| s.bytes()).collect();
-        let pem_encoded = base64::decode(pv_key_no_whitespace )?;
-        let private_key = openssl::rsa::Rsa::private_key_from_pem(&pem_encoded)?.try_into()?;
+        let private_key = openssl::rsa::Rsa::private_key_from_pem(self.private_key.as_bytes())?.try_into()?;
         Ok(ProcessedConfigAccount {
             email: self.email,
             online_token: self.online_token,

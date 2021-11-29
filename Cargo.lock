@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "acme-validator-dns"
+name = "acme-dns-online"
 version = "0.1.0"
 dependencies = [
  "acme2",
