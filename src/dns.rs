@@ -3,10 +3,10 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use futures::StreamExt;
+use futures_util::stream::StreamExt;
 use tokio::net::{ToSocketAddrs, UdpSocket};
 use trust_dns_proto::{
-    op::Message,
+    op::MessageType,
     rr::{rdata::TXT, DNSClass, Name, RData, Record, RecordType},
     udp::UdpStream,
     xfer::SerialMessage,
@@ -20,15 +20,21 @@ pub(crate) struct DnsWorkerHandle {
 
 impl DnsWorkerHandle {
     pub(crate) fn add_token(&self, name: Name, val: String) -> Option<String> {
-        self.tokens.lock().unwrap().insert(name, val)
+        tracing::debug!("Adding token {} to name: {}.\nCurrent state:", &val, &name);
+        let mut lock = self.tokens.lock().unwrap();
+        let res = lock.insert(name, val);
+        for (k, v) in lock.iter() {
+            tracing::debug!("{}: {}", k, v);
+        }
+        res
     }
 
     pub(crate) fn get_token(&self, name: &Name) -> Option<String> {
         self.tokens.lock().unwrap().get(name).cloned()
     }
 
-    pub(crate) fn delete_token(&self, name: Name) -> Option<String> {
-        self.tokens.lock().unwrap().remove(&name)
+    pub(crate) fn delete_token(&self, name: &Name) -> Option<String> {
+        self.tokens.lock().unwrap().remove(name)
     }
 
     fn new() -> Self {
@@ -57,6 +63,7 @@ impl DnsWorker {
 
     pub(crate) async fn run(mut self) {
         let mut stream = Box::pin(self.udp_stream.filter_map(|serialized_message| async {
+            tracing::debug!("Received a DNS message.");
             let serialized_message = serialized_message.unwrap();
             let message = serialized_message.to_message().unwrap();
             let queries = message.queries();
@@ -69,23 +76,30 @@ impl DnsWorker {
                 _ => return None,
             }
             let name = q.name();
+            tracing::debug!("Queried name: {}", &name);
             let mut labels = name.iter();
-            let first_label = labels.next();
-            match first_label {
-                Some(b"_acme-challenge") => (),
-                _ => return None,
+            let first_label = labels.next().map(|s| s.to_ascii_lowercase());
+            match first_label.as_deref() {
+                Some(b"_acme-challenge") => {}
+                _ => {
+                    tracing::debug!("First label {:?} ignoring.", &first_label);
+                    return None;
+                }
             }
             let parent_name = Name::from_labels(labels).unwrap();
             let token = self.handle.get_token(&parent_name);
+            tracing::debug!("For {} token is {:?}.", &parent_name, &token);
             token.map(|token| {
-                let mut m = Message::new();
+                tracing::debug!("Replying with token {}", &token);
+                let mut m = message.clone();
                 m.set_authoritative(true)
                     .add_answer(Record::from_rdata(
                         name.clone(),
-                        600,
+                        1,
                         RData::TXT(TXT::new(vec![token])),
                     ))
-                    .set_id(message.id());
+                    .set_message_type(MessageType::Response)
+                    .set_recursion_available(false);
                 let buf = m.to_vec().unwrap();
                 SerialMessage::new(buf, serialized_message.addr())
             })
@@ -96,7 +110,7 @@ impl DnsWorker {
     }
 
     /// Get a reference to the dns worker's handle.
-    fn handle(&self) -> &DnsWorkerHandle {
+    pub(crate) fn handle(&self) -> &DnsWorkerHandle {
         &self.handle
     }
 }

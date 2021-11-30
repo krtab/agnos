@@ -1,73 +1,31 @@
 #![allow(unreachable_code)]
 
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use clap::{crate_authors, crate_description, crate_name, crate_version, Arg};
+use std::{sync::Arc, time::Duration};
 
 use eyre::eyre;
-use reqwest::Client;
 use sha2::Digest;
-use structopt::StructOpt;
 use tokio::{fs::File, io::AsyncWriteExt};
 
 mod dns;
 use dns::{DnsWorker, DnsWorkerHandle};
 mod interface;
 use interface::{ProcessedConfigAccount, TomlOps};
-
+use trust_dns_proto::rr::Name;
 
 static ACME_URL_STAGING: &str = "https://acme-staging-v02.api.letsencrypt.org/directory";
 static ACME_URL: &str = "https://acme-v02.api.letsencrypt.org/directory";
-
-fn online_api_url(domain: &str) -> String {
-    format!(
-        "https://api.online.net/api/v1/domain/{domain}/version/active",
-        domain = domain
-    )
-}
-
-fn json_add_dns_txt_field_json(name: &str, content: &str) -> String {
-    format!(
-        r#"[
-  {{
-    "name": "{name}",
-    "type": "TXT",
-    "changeType": "ADD",
-    "records": [
-      {{
-        "data": "\"{content}\""
-      }}
-    ]
-  }}
-]"#,
-        name = name,
-        content = content
-    )
-}
-
-fn json_delete_dns_txt_field_json(name: &str) -> String {
-    format!(
-        r#"[
-  {{
-    "name": "{name}",
-    "type": "TXT",
-    "changeType": "DELETE",
-    "records": []
-  }}
-]"#,
-        name = name,
-    )
-}
 
 fn key_auth_to_dns_txt(key_auth: &str) -> String {
     let hash = sha2::Sha256::digest(key_auth.as_bytes());
     base64::encode_config(hash, base64::URL_SAFE_NO_PAD)
 }
 
-
 // #[instrument(skip_all)]
 async fn process_config_account(
     config_account: ProcessedConfigAccount,
     acme_dir: Arc<acme2::Directory>,
-    client: Client,
+    handle: DnsWorkerHandle,
 ) -> eyre::Result<()> {
     match tokio::fs::read(&config_account.output_file).await {
         Err(e) => match e.kind() {
@@ -104,13 +62,8 @@ async fn process_config_account(
         .private_key(config_account.private_key)
         .build()
         .await?;
-    let certs = process_config_account_domain(
-        config_account.domain,
-        account.clone(),
-        client.clone(),
-        &config_account.online_token,
-    )
-    .await?;
+    let certs =
+        process_config_account_domain(config_account.domain, account.clone(), handle).await?;
     tracing::info!(
         "Writting certificate to file {}.",
         config_account.output_file.display()
@@ -127,11 +80,10 @@ async fn process_config_account(
 async fn process_config_account_domain(
     domain: String,
     account: Arc<acme2::Account>,
-    client: Client,
-    online_api_key: &str,
+    handle: DnsWorkerHandle,
 ) -> eyre::Result<Vec<openssl::x509::X509>> {
     tracing::info!("Processing domain {}", &domain);
-    let online_url = online_api_url(&domain);
+    let domain_validated: Name = format!("{}.", domain).parse()?;
     let order = acme2::OrderBuilder::new(account)
         .add_dns_identifier(format!("*.{}", domain))
         .add_dns_identifier(domain)
@@ -147,30 +99,16 @@ async fn process_config_account_domain(
         let txt_value = key_auth_to_dns_txt(&key);
         tracing::info!("TXT value: {}", txt_value);
         tracing::info!("Adding challenge to DNS zone.");
-        let request = client
-            .patch(&online_url)
-            .body(json_add_dns_txt_field_json("_acme-challenge", &txt_value))
-            .header("Authorization", format!("Bearer {}", online_api_key))
-            .header("X-Pretty-JSON", 1)
-            .header("Content-type", "application/json")
-            .build()?;
-        client.execute(request).await?.error_for_status()?;
+        handle.add_token(domain_validated.clone(), txt_value);
         tracing::info!("Challenge added to dns zone.");
         let challenge = challenge.validate().await?;
         tracing::info!("Requesting challenge validation from acme server.");
         let challenge = challenge.wait_done(Duration::from_secs(5), 30).await?;
         assert_eq!(challenge.status, acme2::ChallengeStatus::Valid);
-        let request = client
-            .patch(&online_url)
-            .body(json_delete_dns_txt_field_json("_acme-challenge"))
-            .header("Authorization", format!("Bearer {}", online_api_key))
-            .header("X-Pretty-JSON", 1)
-            .header("Content-type", "application/json")
-            .build()?;
-        client.execute(request).await?.error_for_status()?;
+        tracing::info!("Deleting challenge from DNS zone");
+        handle.delete_token(&domain_validated);
         let authorization = auth.wait_done(Duration::from_secs(5), 10).await?;
         assert_eq!(authorization.status, acme2::AuthorizationStatus::Valid);
-        tokio::time::sleep(Duration::from_secs(10)).await;
     }
     tracing::info!("Waiting for order to be ready.");
     let order = order.wait_ready(Duration::from_secs(5), 3).await?;
@@ -202,28 +140,40 @@ async fn process_config_account_domain(
     Ok(cert)
 }
 
-#[derive(StructOpt)]
-struct CliOps {
-    config_path: PathBuf,
-}
-
 #[tokio::main]
 // #[instrument]
 async fn main() -> color_eyre::eyre::Result<()> {
     // Logging setup
     color_eyre::install()?;
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_max_level(tracing::Level::INFO)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
 
-    let cli_ops = CliOps::from_args_safe()?;
-    let config_file = std::fs::read(cli_ops.config_path)?;
+    let cli_ops = clap::app_from_crate!()
+        .arg(Arg::with_name("config").required(true).takes_value(true))
+        .arg(Arg::with_name("debug").long("debug"))
+        .get_matches();
+
+    let debug_mode = cli_ops.is_present("debug");
+
+    let tracing_filter = std::env::var("RUST_LOG").unwrap_or(if debug_mode {
+        format!("info,{}=debug", env!("CARGO_CRATE_NAME"))
+    } else {
+        "info".to_owned()
+    });
+
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_filter)
+        .init();
+
+    let config_file = std::fs::read(cli_ops.value_of("config").unwrap())?;
     let config_toml: TomlOps = toml::from_slice(&config_file)?;
 
-    let client = reqwest::Client::builder().build()?;
+    let mut config_accounts: ProcessedConfigAccount = config_toml.try_into()?;
 
-    let config_accounts: ProcessedConfigAccount = config_toml.try_into()?;
+    if debug_mode {
+        config_accounts.private_key = acme2::gen_rsa_private_key(2048)?;
+    }
+
+    let dns_worker = DnsWorker::new(config_accounts.dns_listen_adr).await?;
+    let dns_handle = dns_worker.handle();
 
     let acme_url = if config_accounts.staging {
         ACME_URL_STAGING
@@ -231,9 +181,19 @@ async fn main() -> color_eyre::eyre::Result<()> {
         ACME_URL
     }
     .to_string();
+
     let acme_dir = acme2::DirectoryBuilder::new(acme_url)
-        .http_client(reqwest::ClientBuilder::new().build()?)
+        .http_client(
+            reqwest::ClientBuilder::new()
+                .danger_accept_invalid_certs(debug_mode)
+                .build()?,
+        )
         .build()
         .await?;
-    process_config_account(config_accounts, acme_dir.clone(), client.clone()).await
+    let acme_fut = process_config_account(config_accounts, acme_dir.clone(), dns_handle.clone());
+    let dns_worker_fut = dns_worker.run();
+    tokio::select! {
+        res = acme_fut => res,
+        res = dns_worker_fut => Ok(res)
+    }
 }

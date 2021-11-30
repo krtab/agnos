@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf};
 
 use openssl::pkey::{PKey, Private};
 use serde::Deserialize;
@@ -8,9 +8,9 @@ pub(crate) struct TomlOps {
     email: String,
     domain: String,
     private_key: String,
-    online_token: String,
     output_file: PathBuf,
     staging: Option<bool>,
+    dns_listen_adr: SocketAddr,
 }
 
 impl TryInto<ProcessedConfigAccount> for TomlOps {
@@ -21,10 +21,10 @@ impl TryInto<ProcessedConfigAccount> for TomlOps {
             openssl::rsa::Rsa::private_key_from_pem(self.private_key.as_bytes())?.try_into()?;
         Ok(ProcessedConfigAccount {
             email: self.email,
-            online_token: self.online_token,
             domain: self.domain,
             output_file: self.output_file,
             staging: self.staging.unwrap_or(true),
+            dns_listen_adr: self.dns_listen_adr,
             private_key,
         })
     }
@@ -35,7 +35,7 @@ pub(crate) struct ProcessedConfigAccount {
     pub(crate) email: String,
     pub(crate) private_key: PKey<Private>,
     pub(crate) domain: String,
-    pub(crate) online_token: String,
     pub(crate) output_file: PathBuf,
     pub(crate) staging: bool,
+    pub(crate) dns_listen_adr: SocketAddr,
 }

@@ -1,13 +1,10 @@
 # your LSE account email address
 email= "account@email-provider.com"
 
-# The domain managed by online/dedibox.
 # A single certficate valid for
 # `doma.in` and `*.doma.in` will be requested
 domain =  "doma.in"
 
-# Your online API token
-online_token = "546af653eca8d727ccf4adbc57fd6d213d7129d7"
 
 # Output file to store the full chain
 # in PEM format
@@ -17,6 +14,9 @@ output_file = "fullchain.pem"
 # in production, set this to false.
 # Defaults to true
 # staging = false
+
+# Adress and port to bind DNS server to
+dns_listen_adr = "1.2.3.4:53"
 
 # The RSA private key that identify your LSE account
 # in PEM format, encoded in base 64.
