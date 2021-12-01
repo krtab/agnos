@@ -15,27 +15,26 @@ use trust_dns_proto::{
 
 #[derive(Clone, Debug)]
 pub(crate) struct DnsWorkerHandle {
-    tokens: Arc<Mutex<HashMap<Name, String>>>,
+    tokens: Arc<Mutex<HashMap<Name, Vec<String>>>>,
 }
 
 impl DnsWorkerHandle {
-    pub(crate) fn add_token(&self, name: Name, val: String) -> Option<String> {
-        tracing::debug!("Adding token {} to name: {}.\nCurrent state:", &val, &name);
+    pub(crate) fn add_token(&self, name: Name, val: String) {
+        tracing::debug!("Adding token {} to name: {}.", &val, &name);
         let mut lock = self.tokens.lock().unwrap();
-        let res = lock.insert(name, val);
+        lock.entry(name).or_default().push(val);
         for (k, v) in lock.iter() {
-            tracing::debug!("{}: {}", k, v);
+            tracing::debug!("{}: {:?}", k, v);
         }
-        res
     }
 
-    pub(crate) fn get_token(&self, name: &Name) -> Option<String> {
+    pub(crate) fn get_tokens(&self, name: &Name) -> Option<Vec<String>> {
         self.tokens.lock().unwrap().get(name).cloned()
     }
 
-    pub(crate) fn delete_token(&self, name: &Name) -> Option<String> {
-        self.tokens.lock().unwrap().remove(name)
-    }
+    // pub(crate) fn delete_token(&self, name: &Name) -> Option<String> {
+    //     self.tokens.lock().unwrap().remove(name)
+    // }
 
     fn new() -> Self {
         Self {
@@ -87,22 +86,29 @@ impl DnsWorker {
                 }
             }
             let parent_name = Name::from_labels(labels).unwrap();
-            let token = self.handle.get_token(&parent_name);
-            tracing::debug!("For {} token is {:?}.", &parent_name, &token);
-            token.map(|token| {
-                tracing::debug!("Replying with token {}", &token);
-                let mut m = message.clone();
-                m.set_authoritative(true)
-                    .add_answer(Record::from_rdata(
-                        name.clone(),
-                        1,
-                        RData::TXT(TXT::new(vec![token])),
-                    ))
-                    .set_message_type(MessageType::Response)
-                    .set_recursion_available(false);
-                let buf = m.to_vec().unwrap();
-                SerialMessage::new(buf, serialized_message.addr())
-            })
+            let tokens = self.handle.get_tokens(&parent_name);
+            tracing::debug!("For {} tokens are {:?}.", &parent_name, &tokens);
+            match tokens {
+                None => None,
+                Some(v) if v.is_empty() => None,
+                Some(v) => {
+                    tracing::debug!("Replying with tokens:");
+                    let mut m = message.clone();
+                    m.set_authoritative(true)
+                        .set_message_type(MessageType::Response)
+                        .set_recursion_available(false);
+                    for tk in v {
+                        tracing::debug!(" - {}",&tk);
+                        m.add_answer(Record::from_rdata(
+                            name.clone(),
+                            1,
+                            RData::TXT(TXT::new(vec![tk])),
+                        ));
+                    }
+                    let buf = m.to_vec().unwrap();
+                    Some(SerialMessage::new(buf, serialized_message.addr()))
+                }
+            }
         }));
         while let Some(serial_reply) = stream.next().await {
             self.buf_stream_handle.send(serial_reply).unwrap()

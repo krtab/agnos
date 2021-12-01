@@ -1,7 +1,9 @@
 #![allow(unreachable_code)]
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, Arg};
+use futures_util::future::join_all;
 use std::{sync::Arc, time::Duration};
+use tracing::{instrument, debug_span, Instrument};
 
 use eyre::eyre;
 use sha2::Digest;
@@ -9,9 +11,10 @@ use tokio::{fs::File, io::AsyncWriteExt};
 
 mod dns;
 use dns::{DnsWorker, DnsWorkerHandle};
-mod interface;
-use interface::{ProcessedConfigAccount, TomlOps};
+mod config;
 use trust_dns_proto::rr::Name;
+
+use crate::config::Config;
 
 static ACME_URL_STAGING: &str = "https://acme-staging-v02.api.letsencrypt.org/directory";
 static ACME_URL: &str = "https://acme-v02.api.letsencrypt.org/directory";
@@ -21,28 +24,61 @@ fn key_auth_to_dns_txt(key_auth: &str) -> String {
     base64::encode_config(hash, base64::URL_SAFE_NO_PAD)
 }
 
-// #[instrument(skip_all)]
+#[instrument(name = "", level="debug",skip_all,fields(account = %config_account.email))]
 async fn process_config_account(
-    config_account: ProcessedConfigAccount,
+    config_account: config::Account,
     acme_dir: Arc<acme2::Directory>,
     handle: DnsWorkerHandle,
 ) -> eyre::Result<()> {
-    match tokio::fs::read(&config_account.output_file).await {
+    tracing::info!("Processing account {}", &config_account.email);
+    let priv_key = {
+        let buf = tokio::fs::read(&config_account.private_key_path).await?;
+        openssl::pkey::PKey::private_key_from_pem(&buf)?
+    };
+    let account = acme2::AccountBuilder::new(acme_dir.clone())
+        .contact(vec![format!("mailto:{}", config_account.email)])
+        .terms_of_service_agreed(true)
+        .private_key(priv_key)
+        .build()
+        .await?;
+    let certs_fut = config_account
+        .certificates
+        .into_iter()
+        .map(|cert| process_config_certificate(cert, account.clone(), handle.clone()));
+    for res in join_all(certs_fut).await.into_iter() {
+        res?;
+    }
+    Ok(())
+}
+
+#[instrument(name = "", level="debug",skip_all,fields(cert = %config_cert.output_file.display()))]
+async fn process_config_certificate(
+    config_cert: config::Certificate,
+    account: Arc<acme2::Account>,
+    handle: DnsWorkerHandle,
+) -> eyre::Result<()> {
+    tracing::info!(
+        "Processing certificate {}",
+        &config_cert.output_file.display()
+    );
+    match tokio::fs::read(&config_cert.output_file).await {
         Err(e) => match e.kind() {
-            std::io::ErrorKind::NotFound => (),
+            std::io::ErrorKind::NotFound => {
+                tracing::info!("Certificate not found on disk, continuing...")
+            }
             _ => {
                 eyre::bail!(e)
             }
         },
         Ok(f) => {
-            tracing::info!("Checking validity of current cert");
+            tracing::info!("Certificate chain found on disk, checking its validity");
             let current_certs = openssl::x509::X509::stack_from_pem(&f)?;
             let mut need_renewal = false;
             let today_plus_validity = openssl::asn1::Asn1Time::days_from_now(30)?;
             for c in current_certs {
                 let end = c.not_after();
                 let to_renew = end < today_plus_validity;
-                tracing::info!(
+                tracing::debug!(
                     "Found certificate for {:?} ending: {}. Need renewal: {}",
                     c.subject_name(),
                     end,
@@ -51,85 +87,72 @@ async fn process_config_account(
                 need_renewal |= to_renew;
             }
             if !need_renewal {
-                tracing::info!("No certificate requires renewal.");
+                tracing::info!("No certificate in the chain requires renewal.");
                 return Ok(());
+            } else {
+                tracing::info!(
+                    "A certificate in the chain expires in 30 days or less, renewing it."
+                )
             }
         }
     };
-    let account = acme2::AccountBuilder::new(acme_dir.clone())
-        .contact(vec![format!("mailto:{}", config_account.email)])
-        .terms_of_service_agreed(true)
-        .private_key(config_account.private_key)
-        .build()
-        .await?;
-    let certs =
-        process_config_account_domain(config_account.domain, account.clone(), handle).await?;
-    tracing::info!(
-        "Writting certificate to file {}.",
-        config_account.output_file.display()
-    );
-    let mut output_file = File::create(&config_account.output_file).await?;
-    for c in certs {
-        output_file.write_all(&c.to_pem()?).await?;
-        output_file.write_all(b"\n").await?;
-    }
-    Ok(())
-}
 
-// #[instrument(skip(account, client, online_api_key))]
-async fn process_config_account_domain(
-    domain: String,
-    account: Arc<acme2::Account>,
-    handle: DnsWorkerHandle,
-) -> eyre::Result<Vec<openssl::x509::X509>> {
-    tracing::info!("Processing domain {}", &domain);
-    let domain_validated: Name = format!("{}.", domain).parse()?;
-    let order = acme2::OrderBuilder::new(account)
-        .add_dns_identifier(format!("*.{}", domain))
-        .add_dns_identifier(domain)
-        .build()
-        .await?;
-    let authorizations = order.authorizations().await?;
-    tracing::info!("Obtained authorization challenges from acme server.");
-    for auth in authorizations {
-        let challenge = auth.get_challenge("dns-01").unwrap();
-        let key = challenge
-            .key_authorization()?
-            .ok_or_else(|| eyre!("Challenge's key was None"))?;
-        let txt_value = key_auth_to_dns_txt(&key);
-        tracing::info!("TXT value: {}", txt_value);
-        tracing::info!("Adding challenge to DNS zone.");
-        handle.add_token(domain_validated.clone(), txt_value);
-        tracing::info!("Challenge added to dns zone.");
-        let challenge = challenge.validate().await?;
-        tracing::info!("Requesting challenge validation from acme server.");
-        let challenge = challenge.wait_done(Duration::from_secs(5), 30).await?;
-        assert_eq!(challenge.status, acme2::ChallengeStatus::Valid);
-        tracing::info!("Deleting challenge from DNS zone");
-        handle.delete_token(&domain_validated);
-        let authorization = auth.wait_done(Duration::from_secs(5), 10).await?;
-        assert_eq!(authorization.status, acme2::AuthorizationStatus::Valid);
+    tracing::debug!("Building order...");
+    let mut order = acme2::OrderBuilder::new(account);
+    for domain in config_cert.domains {
+        order.add_dns_identifier(domain);
     }
-    tracing::info!("Waiting for order to be ready.");
+    let order = order.build().await?;
+
+    tracing::debug!("Obtaining authorizations");
+    let authorizations = order.authorizations().await?;
+
+    tracing::info!("Processing authorizations");
+    let n_auth_total = authorizations.len();
+    let authorizations_fut = authorizations
+        .into_iter()
+        .enumerate()
+        .map(|(n_auth, auth)| {
+            let handle = handle.clone();
+            let span = debug_span!("",domain = %auth.identifier.value, wildcard = auth.wildcard);
+            async move {
+                tracing::debug!("Processing authorization {}/{}", n_auth + 1, n_auth_total);
+                let challenge = auth.get_challenge("dns-01").unwrap();
+                let key = challenge
+                    .key_authorization()?
+                    .ok_or_else(|| eyre!("Challenge's key was None"))?;
+                let txt_value = key_auth_to_dns_txt(&key);
+                tracing::debug!("TXT value: {}", txt_value);
+                // TODO: to check when clarifying FQDNs.
+                let domain_validated: Name = format!("{}.", &auth.identifier.value).parse()?;
+                tracing::info!(
+                    "Adding challenge {} to dns zone for domain '{}'.",
+                    &txt_value,
+                    &domain_validated
+                );
+                handle.add_token(domain_validated, txt_value);
+                tracing::debug!("Requesting challenge validation from acme server.");
+                let challenge = challenge.validate().await?;
+                let challenge = challenge.wait_done(Duration::from_secs(5), 30).await?;
+                assert_eq!(challenge.status, acme2::ChallengeStatus::Valid);
+                tracing::debug!("Requesting authorization validation from acme server.");
+                let authorization = auth.wait_done(Duration::from_secs(5), 10).await?;
+                assert_eq!(authorization.status, acme2::AuthorizationStatus::Valid);
+                Ok(())
+            }.instrument(span)
+        });
+    let authorization_res: eyre::Result<Vec<_>> =
+        join_all(authorizations_fut).await.into_iter().collect();
+    authorization_res?;
+
+    tracing::info!("Waiting for order to be ready on ACME server.");
     let order = order.wait_ready(Duration::from_secs(5), 3).await?;
     assert_eq!(order.status, acme2::OrderStatus::Ready);
-
-    // Generate an RSA private key for the certificate.
     let pkey = acme2::gen_rsa_private_key(4096)?;
-
-    // Create a certificate signing request for the order, and request
-    // the certificate.
     let order = order.finalize(acme2::Csr::Automatic(pkey)).await?;
-
-    // Poll the order every 5 seconds until it is in either the
-    // `valid` or `invalid` state. Valid means that the certificate
-    // has been provisioned, and is now ready for download.
-    tracing::info!("Waiting for certificate signature.");
+    tracing::info!("Waiting for certificate signature by the ACME server.");
     let order = order.wait_done(Duration::from_secs(5), 3).await?;
-
     assert_eq!(order.status, acme2::OrderStatus::Valid);
-
-    // Download the certificate, and panic if it doesn't exist.
     tracing::info!("Downloading certificate.");
     let cert = order
         .certificate()
@@ -137,7 +160,16 @@ async fn process_config_account_domain(
         .ok_or_else(|| eyre!("Certificate was None"))?;
     assert!(cert.len() > 1);
 
-    Ok(cert)
+    tracing::info!(
+        "Writting certificate to file {}.",
+        config_cert.output_file.display()
+    );
+    let mut output_file = File::create(&config_cert.output_file).await?;
+    for c in cert {
+        output_file.write_all(&c.to_pem()?).await?;
+        output_file.write_all(b"\n").await?;
+    }
+    Ok(())
 }
 
 #[tokio::main]
@@ -149,6 +181,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
     let cli_ops = clap::app_from_crate!()
         .arg(Arg::with_name("config").required(true).takes_value(true))
         .arg(Arg::with_name("debug").long("debug"))
+        .arg(Arg::with_name("no-staging").long("no-staging"))
         .get_matches();
 
     let debug_mode = cli_ops.is_present("debug");
@@ -164,36 +197,34 @@ async fn main() -> color_eyre::eyre::Result<()> {
         .init();
 
     let config_file = std::fs::read(cli_ops.value_of("config").unwrap())?;
-    let config_toml: TomlOps = toml::from_slice(&config_file)?;
+    let config: Config = toml::from_slice(&config_file)?;
 
-    let mut config_accounts: ProcessedConfigAccount = config_toml.try_into()?;
-
-    if debug_mode {
-        config_accounts.private_key = acme2::gen_rsa_private_key(2048)?;
-    }
-
-    let dns_worker = DnsWorker::new(config_accounts.dns_listen_adr).await?;
+    let dns_worker = DnsWorker::new(config.dns_listen_adr).await?;
     let dns_handle = dns_worker.handle();
 
-    let acme_url = if config_accounts.staging {
-        ACME_URL_STAGING
-    } else {
+    let acme_url = if cli_ops.is_present("no-staging") {
         ACME_URL
+    } else {
+        ACME_URL_STAGING
     }
     .to_string();
 
     let acme_dir = acme2::DirectoryBuilder::new(acme_url)
-        .http_client(
-            reqwest::ClientBuilder::new()
-                .danger_accept_invalid_certs(debug_mode)
-                .build()?,
-        )
+        .http_client(reqwest::ClientBuilder::new().build()?)
         .build()
         .await?;
-    let acme_fut = process_config_account(config_accounts, acme_dir.clone(), dns_handle.clone());
+    let accounts_futures = config
+        .accounts
+        .into_iter()
+        .map(|acc| process_config_account(acc, acme_dir.clone(), dns_handle.clone()));
+    let acme_fut = join_all(accounts_futures);
     let dns_worker_fut = dns_worker.run();
-    tokio::select! {
+    let accounts_ress = tokio::select! {
         res = acme_fut => res,
-        res = dns_worker_fut => Ok(res)
+        _ = dns_worker_fut => unreachable!("DNS worker should run endlessly.")
+    };
+    for res in accounts_ress {
+        res?;
     }
+    Ok(())
 }
