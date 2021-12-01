@@ -12,7 +12,8 @@ private_key_path = "priv_key.pem"
 # The certificates ordered for that account.
 [[accounts.certificates]]
 domains =  ["doma.in","*.doma.in"]
-output_file = "fullchain.pem"
+fullchain_output_file = "fullchain.pem"
+key_output_file = "cert_key.pem"
 
 # A second account
 [[accounts]]
@@ -21,4 +22,5 @@ private_key_path = "priv_key_2.pem"
 
 [[accounts.certificates]]
 domains = ["foo.tld","subdomain.foo.tld"]
-output_file = "fullchain2.pem"
+fullchain_output_file = "fullchain2.pem"
+key_output_file = "cert_key_2.pem"

@@ -20,5 +20,6 @@ pub(crate) struct Account {
 #[serde(deny_unknown_fields)]
 pub(crate) struct Certificate {
     pub(crate) domains: Vec<String>,
-    pub(crate) output_file: PathBuf,
+    pub(crate) fullchain_output_file: PathBuf,
+    pub(crate) key_output_file: PathBuf,
 }

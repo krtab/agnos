@@ -58,7 +58,7 @@ async fn process_config_account(
     Ok(())
 }
 
-#[instrument(name = "", level="debug",skip_all,fields(cert = %config_cert.output_file.display()))]
+#[instrument(name = "", level="debug",skip_all,fields(cert = %config_cert.fullchain_output_file.display()))]
 async fn process_config_certificate(
     config_cert: config::Certificate,
     account: Arc<acme2::Account>,
@@ -67,9 +67,9 @@ async fn process_config_certificate(
 ) -> eyre::Result<()> {
     tracing::info!(
         "Processing certificate {}",
-        &config_cert.output_file.display()
+        &config_cert.fullchain_output_file.display()
     );
-    match tokio::fs::read(&config_cert.output_file).await {
+    match tokio::fs::read(&config_cert.fullchain_output_file).await {
         Err(e) => match e.kind() {
             std::io::ErrorKind::NotFound => {
                 tracing::info!("Certificate not found on disk, continuing...")
@@ -163,6 +163,7 @@ async fn process_config_certificate(
     let order = order.wait_ready(Duration::from_secs(5), 3).await?;
     assert_eq!(order.status, acme2::OrderStatus::Ready);
     let pkey = acme2::gen_rsa_private_key(4096)?;
+    let pkey_pem = pkey.private_key_to_pem_pkcs8()?;
     let order = order.finalize(acme2::Csr::Automatic(pkey)).await?;
     tracing::info!("Waiting for certificate signature by the ACME server.");
     let order = order.wait_done(Duration::from_secs(5), 3).await?;
@@ -176,13 +177,18 @@ async fn process_config_certificate(
 
     tracing::info!(
         "Writting certificate to file {}.",
-        config_cert.output_file.display()
+        config_cert.fullchain_output_file.display()
     );
-    let mut output_file = File::create(&config_cert.output_file).await?;
+    let mut output_file = File::create(&config_cert.fullchain_output_file).await?;
     for c in cert {
         output_file.write_all(&c.to_pem()?).await?;
         output_file.write_all(b"\n").await?;
     }
+    tracing::info!(
+        "Writting certificate key to file {}.",
+        config_cert.key_output_file.display()
+    );
+    tokio::fs::write(&config_cert.key_output_file, pkey_pem).await?;
     Ok(())
 }
 
