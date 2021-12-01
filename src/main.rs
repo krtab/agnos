@@ -3,7 +3,7 @@
 use clap::{crate_authors, crate_description, crate_name, crate_version, Arg};
 use futures_util::future::join_all;
 use std::{sync::Arc, time::Duration};
-use tracing::{instrument, debug_span, Instrument};
+use tracing::{debug_span, instrument, Instrument};
 
 use eyre::eyre;
 use sha2::Digest;
@@ -13,6 +13,8 @@ mod dns;
 use dns::{DnsWorker, DnsWorkerHandle};
 mod config;
 use trust_dns_proto::rr::Name;
+mod barrier;
+use barrier::Barrier;
 
 use crate::config::Config;
 
@@ -29,6 +31,7 @@ async fn process_config_account(
     config_account: config::Account,
     acme_dir: Arc<acme2::Directory>,
     handle: DnsWorkerHandle,
+    barrier: Barrier,
 ) -> eyre::Result<()> {
     tracing::info!("Processing account {}", &config_account.email);
     let priv_key = {
@@ -41,10 +44,14 @@ async fn process_config_account(
         .private_key(priv_key)
         .build()
         .await?;
+    let barriers = vec![barrier; config_account.certificates.len()];
     let certs_fut = config_account
         .certificates
         .into_iter()
-        .map(|cert| process_config_certificate(cert, account.clone(), handle.clone()));
+        .zip(barriers)
+        .map(|(cert, barrier)| {
+            process_config_certificate(cert, account.clone(), handle.clone(), barrier)
+        });
     for res in join_all(certs_fut).await.into_iter() {
         res?;
     }
@@ -56,6 +63,7 @@ async fn process_config_certificate(
     config_cert: config::Certificate,
     account: Arc<acme2::Account>,
     handle: DnsWorkerHandle,
+    barrier: Barrier,
 ) -> eyre::Result<()> {
     tracing::info!(
         "Processing certificate {}",
@@ -109,38 +117,44 @@ async fn process_config_certificate(
 
     tracing::info!("Processing authorizations");
     let n_auth_total = authorizations.len();
-    let authorizations_fut = authorizations
-        .into_iter()
-        .enumerate()
-        .map(|(n_auth, auth)| {
-            let handle = handle.clone();
-            let span = debug_span!("",domain = %auth.identifier.value, wildcard = auth.wildcard);
-            async move {
-                tracing::debug!("Processing authorization {}/{}", n_auth + 1, n_auth_total);
-                let challenge = auth.get_challenge("dns-01").unwrap();
-                let key = challenge
-                    .key_authorization()?
-                    .ok_or_else(|| eyre!("Challenge's key was None"))?;
-                let txt_value = key_auth_to_dns_txt(&key);
-                tracing::debug!("TXT value: {}", txt_value);
-                // TODO: to check when clarifying FQDNs.
-                let domain_validated: Name = format!("{}.", &auth.identifier.value).parse()?;
-                tracing::info!(
-                    "Adding challenge {} to dns zone for domain '{}'.",
-                    &txt_value,
-                    &domain_validated
-                );
-                handle.add_token(domain_validated, txt_value);
-                tracing::debug!("Requesting challenge validation from acme server.");
-                let challenge = challenge.validate().await?;
-                let challenge = challenge.wait_done(Duration::from_secs(5), 30).await?;
-                assert_eq!(challenge.status, acme2::ChallengeStatus::Valid);
-                tracing::debug!("Requesting authorization validation from acme server.");
-                let authorization = auth.wait_done(Duration::from_secs(5), 10).await?;
-                assert_eq!(authorization.status, acme2::AuthorizationStatus::Valid);
-                Ok(())
-            }.instrument(span)
-        });
+    let barriers = vec![barrier; n_auth_total];
+    let authorizations_fut =
+        authorizations
+            .into_iter()
+            .enumerate()
+            .zip(barriers)
+            .map(|((n_auth, auth), barrier)| {
+                let handle = handle.clone();
+                let span =
+                    debug_span!("",domain = %auth.identifier.value, wildcard = auth.wildcard);
+                async move {
+                    tracing::debug!("Processing authorization {}/{}", n_auth + 1, n_auth_total);
+                    let challenge = auth.get_challenge("dns-01").unwrap();
+                    let key = challenge
+                        .key_authorization()?
+                        .ok_or_else(|| eyre!("Challenge's key was None"))?;
+                    let txt_value = key_auth_to_dns_txt(&key);
+                    tracing::debug!("TXT value: {}", txt_value);
+                    // TODO: to check when clarifying FQDNs.
+                    let domain_validated: Name = format!("{}.", &auth.identifier.value).parse()?;
+                    tracing::info!(
+                        "Adding challenge {} to dns zone for domain '{}'.",
+                        &txt_value,
+                        &domain_validated
+                    );
+                    handle.add_token(domain_validated, txt_value);
+                    barrier.wait().await;
+                    tracing::debug!("Requesting challenge validation from acme server.");
+                    let challenge = challenge.validate().await?;
+                    let challenge = challenge.wait_done(Duration::from_secs(5), 30).await?;
+                    assert_eq!(challenge.status, acme2::ChallengeStatus::Valid);
+                    tracing::debug!("Requesting authorization validation from acme server.");
+                    let authorization = auth.wait_done(Duration::from_secs(5), 10).await?;
+                    assert_eq!(authorization.status, acme2::AuthorizationStatus::Valid);
+                    Ok(())
+                }
+                .instrument(span)
+            });
     let authorization_res: eyre::Result<Vec<_>> =
         join_all(authorizations_fut).await.into_iter().collect();
     authorization_res?;
@@ -213,10 +227,14 @@ async fn main() -> color_eyre::eyre::Result<()> {
         .http_client(reqwest::ClientBuilder::new().build()?)
         .build()
         .await?;
+    let barriers = vec![Barrier::new(); config.accounts.len()];
     let accounts_futures = config
         .accounts
         .into_iter()
-        .map(|acc| process_config_account(acc, acme_dir.clone(), dns_handle.clone()));
+        .zip(barriers)
+        .map(|(acc, barrier)| {
+            process_config_account(acc, acme_dir.clone(), dns_handle.clone(), barrier)
+        });
     let acme_fut = join_all(accounts_futures);
     let dns_worker_fut = dns_worker.run();
     let accounts_ress = tokio::select! {

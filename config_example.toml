@@ -1,55 +1,24 @@
-# your LSE account email address
-email= "account@email-provider.com"
-
-# A single certficate valid for
-# `doma.in` and `*.doma.in` will be requested
-domain =  "doma.in"
-
-
-# Output file to store the full chain
-# in PEM format
-output_file = "fullchain.pem"
-
-# Whether to use LSE staging server
-# in production, set this to false.
-# Defaults to true
-# staging = false
-
-# Adress and port to bind DNS server to
+# Address for the DNS server to listen on.
+# The port is should probably be 53.
 dns_listen_adr = "1.2.3.4:53"
 
-# The RSA private key that identify your LSE account
-# in PEM format, encoded in base 64.
-# To generate one:
-# `openssl genrsa 2048`
-# or
-# `openssl genrsa 4096`
-private_key = """
------BEGIN RSA PRIVATE KEY-----
-MIIEowIBAAKCAQEA5Lucun5PWwUNW6colFhBZ6FvO2FCa7Q2MbTSet1caLzETPdD
-4xJYaCxFUrqQca/LiSG8chqhQVBV1A3HojTPujSwcOVuyjQNUCOzA3eIbYoL0kMZ
-4NgHx3/HExMJmG9cKHf+JGqTgpQ+Wc0oaNKoT0QeTxC5ekoyiCSaWyiiDVlcvKNZ
-rVNQYHMbwNM5oQxWQjDGGmsyODVXREZq73PcgSobSgsGTxSCEY2QShImxYFAuJ0Z
-XqdEqWmPYy0WU6RPItubgkpSsuIW6L30uU5wCfmS/CwzoRO4k4xI1TOfiITftcf+
-yjHlJZIaDzl0uvLLZjCunQ5LYA6oDLLyomgNhQIDAQABAoIBAFatbegSI3pHgNdh
-kfQdObPOrjsfUS9FXGAbuMNMjU83cWAFN5meAxh+5kpCXqhmSMgPm7zVsJPyoIO6
-MROb1bgnbVFq8D/5162tyZGfw3hXHsGwIeddlh0Yo9TrmvBECvVe+1TLeli6WqJn
-J1AJvDRFiQLHQLJB2cJTtJak4DwUELUGu31rO9PN1sKwi2Y5lOvG6txLeiJkH81r
-qVOMhJiF2Yn3STs3X83p4V2ssAmxqlsxi0B25H1U020QOykzkp36xZ0TzL5AlpFP
-y6VVF3x86hbv5jza1M8HBGEC5Hrr4v1VH8VxKStay5JaOGvdWwkMRfaHNQlCswqW
-y6EyJGUCgYEA8p6InGcDgYJl0RwRGnbAABCPnyMKzNm5A1jdy+fMUDkPighicpVB
-dsY0rVBZC90C/NXo+B7nqacFLOJu0JloKayxWDJbfpzebozkPeVjGmqlYoXPxCA3
-/4o9aPpOVv/6zCzYpbO1UGeZNO9/iFv9hBnafN67HoKr98oxGumbKgsCgYEA8VkF
-SHPAndzUJfjzfw2Mnbe1LziKWwVr7Pz9SUkXa2iu0SB/1nHRCKmt5OMWCPU8rLWb
-ZXUKHMkBCdg7JuGijvquX/haA2OW0SYR14NlR8XQnzagakzibS5WG0KM6FHxuXiq
-7rlFlNRclbLynq2sLMrFl9YVSlIAxPc1bU1E8K8CgYBJA9LjFtFkSWTw4Hx5NWGk
-41cFslsOuTtHuZfORK0lO3bkuI9AIpD3+MBjpDmYK2Q5yPp6qXpYgS46is6EspY5
-bIJWo5kLapQ6OuZ5hi4kBhJNqy2SvYt8uRKwJBwtbI4CokB05bdcQkFGQAlmdSC/
-f7RUPgecMAEm6k+K5ODQbwKBgDZHMgP4XGJkbqXXllOFpZE25p2nFp6f2oTi5Mfd
-k1HJqj9IEtgUotFS79PhKmx7Utj4wukPaGXO4tfm9G6rIhcL07mrrfrDJAEHkc2p
-NFbu6xtTesJNZkLtv9nDntME0ttGgxLLQhXVqLjWFPCQ2H7+X2/lasZbKOcjPbXG
-QfHrAoGBAKp79/B+J51A5pMrj1EcOPM2IZSKm7kx/yK/7U+KrJy+FUA9WJ49X5US
-rjPCUdFG+DsKFOzyqqtSOMg7cWxk8ARqHpRK//4f28Dqab33925/umpEc4o43yjr
-Jkjqa5XsMAn5pCDm7+E7MC5WOVfJlB8J9yOdEBSDUdVKv82SN24c
------END RSA PRIVATE KEY-----
-"""
+# A first account
+# accounts are identified by
+# their email and their private key
+[[accounts]]
+email= "contact@doma.in"
+private_key_path = "priv_key.pem"
+
+# The certificates ordered for that account.
+[[accounts.certificates]]
+domains =  ["doma.in","*.doma.in"]
+output_file = "fullchain.pem"
+
+# A second account
+[[accounts]]
+email = "contact@foo.tld"
+private_key_path = "priv_key_2.pem"
+
+[[accounts.certificates]]
+domains = ["foo.tld","subdomain.foo.tld"]
+output_file = "fullchain2.pem"
