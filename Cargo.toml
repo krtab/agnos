@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-name = "acme-dns-online"
+name = "agnos"
 version = "0.1.0"
 [dependencies]
 acme2 = "0.5"
