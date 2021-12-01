@@ -1,5 +1,5 @@
 # Address for the DNS server to listen on.
-# The port is should probably be 53.
+# The port should probably be 53.
 dns_listen_adr = "1.2.3.4:53"
 
 # A first account
@@ -9,17 +9,24 @@ dns_listen_adr = "1.2.3.4:53"
 email= "contact@doma.in"
 private_key_path = "priv_key.pem"
 
-# The certificates ordered for that account.
+# A first certificate ordered for that account.
 [[accounts.certificates]]
 domains =  ["doma.in","*.doma.in"]
-fullchain_output_file = "fullchain.pem"
-key_output_file = "cert_key.pem"
+fullchain_output_file = "fullchain_A.pem"
+key_output_file = "cert_key_A.pem"
+
+# A second certificate ordered for that account.
+[[accounts.certificates]]
+domains =  ["examp.le","another.examp.le","and.a.completely.different.one"]
+fullchain_output_file = "fullchain_B.pem"
+key_output_file = "cert_key_B.pem"
 
 # A second account
 [[accounts]]
 email = "contact@foo.tld"
 private_key_path = "priv_key_2.pem"
 
+# The only certificate for that second account
 [[accounts.certificates]]
 domains = ["foo.tld","subdomain.foo.tld"]
 fullchain_output_file = "fullchain2.pem"
