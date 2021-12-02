@@ -199,9 +199,25 @@ async fn main() -> color_eyre::eyre::Result<()> {
     color_eyre::install()?;
 
     let cli_ops = clap::app_from_crate!()
-        .arg(Arg::with_name("config").required(true).takes_value(true))
-        .arg(Arg::with_name("debug").long("debug"))
-        .arg(Arg::with_name("no-staging").long("no-staging"))
+        .setting(clap::AppSettings::ArgRequiredElseHelp)
+        .arg(
+            Arg::with_name("config")
+                .required(true)
+                .takes_value(true)
+                .value_name("config.toml")
+                .help("Path to the configuration file."),
+        )
+        .arg(
+            Arg::with_name("debug")
+                .long("debug")
+                .help("Activates debug output."),
+        )
+        .arg(Arg::with_name("no-staging").long("no-staging").help(
+            "Use Let's Encrypt production server \
+            for certificate validation. Set this \
+            flag once you have tested your \
+            configuration.",
+        ))
         .get_matches();
 
     let debug_mode = cli_ops.is_present("debug");
