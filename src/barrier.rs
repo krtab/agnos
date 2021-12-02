@@ -1,4 +1,4 @@
-use tokio::sync::broadcast::{Sender, error::RecvError, channel};
+use tokio::sync::broadcast::{channel, error::RecvError, Sender};
 
 // TODO: better implementation.
 
@@ -17,13 +17,13 @@ impl Barrier {
         match receiver.recv().await {
             Ok(_) => unreachable!(),
             Err(RecvError::Lagged(_)) => unreachable!(),
-            Err(RecvError::Closed) => ()
+            Err(RecvError::Closed) => (),
         }
     }
 
     pub(crate) fn new() -> Self {
         Self {
-            inner: channel(1).0
+            inner: channel(1).0,
         }
     }
 }

@@ -98,7 +98,7 @@ impl DnsWorker {
                         .set_message_type(MessageType::Response)
                         .set_recursion_available(false);
                     for tk in v {
-                        tracing::debug!(" - {}",&tk);
+                        tracing::debug!(" - {}", &tk);
                         m.add_answer(Record::from_rdata(
                             name.clone(),
                             1,
