@@ -150,6 +150,6 @@ _acme-challenge.another.examp.le    NS      agnos-ns.doma.in
 
 ### Running agnos
 
-`agnos` takes a single command line argument, the path to its configuration file, and to optional flags: `--no-staging` to use Let's Encrypt production server, and `--debug` to display more debug information. Help is available via `agnos --help`.
+`agnos` takes a single command line argument, the path to its configuration file, and two optional flags: `--no-staging` to use Let's Encrypt production server, and `--debug` to display more debug information. Help is available via `agnos --help`.
 
-When running, it checks whether the certificate are going to expire in the next 30 days, and only renew them in that case, so it is suitable to be used in a cron job.
+When running, it checks whether the certificates of the full chain are going to expire in the next 30 days, and only renew them in that case, so it is suitable to be used in a cron job.
