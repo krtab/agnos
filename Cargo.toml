@@ -2,6 +2,13 @@
 edition = "2021"
 name = "agnos"
 version = "0.1.0"
+authors = ["Arthur Carcano"]
+description = """Obtain (wildcard) certificates from let's encrypt \
+using dns-01 without the need for API access to your DNS provider."""
+readme = "README.md"
+repository = "https://github.com/krtab/agnos"
+license = "MIT"
+
 [dependencies]
 acme2 = "0.5"
 base64 = "0.13"
