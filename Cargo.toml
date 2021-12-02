@@ -9,12 +9,13 @@ readme = "README.md"
 repository = "https://github.com/krtab/agnos"
 license = "MIT"
 exclude = [".github"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 acme2 = "0.5"
 base64 = "0.13"
 color-eyre = "0.5"
-eyre = "*"
+eyre = "0.6.5"
 futures-util = "0.3.18"
 openssl = "0.10.38"
 reqwest = "0.11.7"
