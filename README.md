@@ -40,6 +40,10 @@ Agnos leverages let's encrypt capability to follow DNS `NS` records. It requires
 
 This instructions are given for a Linux system but a similar process will likely work on all Unixes, and maybe windows.
 
+### Released binary
+
+Pre-compiled binaries for (relatively recent) Linux/amd64 are available for every tagged [release](https://github.com/krtab/agnos/releases).
+
 ### Building
 
 Agnos is written in Rust. To build it you will need to have the rust toolchain installed. 
