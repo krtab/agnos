@@ -223,9 +223,12 @@ async fn main() -> color_eyre::eyre::Result<()> {
     let debug_mode = cli_ops.is_present("debug");
 
     let tracing_filter = std::env::var("RUST_LOG").unwrap_or(if debug_mode {
-        format!("info,{}=debug", env!("CARGO_CRATE_NAME"))
+        format!(
+            "info,{}=debug,trust_dns_server=off",
+            env!("CARGO_CRATE_NAME")
+        )
     } else {
-        "info".to_owned()
+        "info,trust_dns_server=off".to_owned()
     });
 
     tracing_subscriber::fmt()

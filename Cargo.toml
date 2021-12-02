@@ -22,6 +22,7 @@ reqwest = "0.11.7"
 sha2 = "0.9.8"
 toml = "0.5.8"
 tracing = "0.1.29"
+trust-dns-server = "0.20.3"
 trust-dns-proto = "0.20.3"
 clap = "2.34.0"
 

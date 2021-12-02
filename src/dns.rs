@@ -1,16 +1,20 @@
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
-use futures_util::stream::StreamExt;
-use tokio::net::{ToSocketAddrs, UdpSocket};
+use tokio::net::{TcpListener, ToSocketAddrs, UdpSocket};
 use trust_dns_proto::{
-    op::MessageType,
+    error::ProtoError,
+    op::{Header, MessageType, ResponseCode},
     rr::{rdata::TXT, DNSClass, Name, RData, Record, RecordType},
-    udp::UdpStream,
-    xfer::SerialMessage,
-    BufStreamHandle,
+};
+use trust_dns_server::{
+    authority::MessageResponseBuilder,
+    client::op::LowerQuery,
+    server::{Request, RequestHandler},
+    ServerFuture,
 };
 
 #[derive(Clone, Debug)]
@@ -43,29 +47,21 @@ impl DnsWorkerHandle {
     }
 }
 
-pub(crate) struct DnsWorker {
+struct DnsRequestHandler {
     handle: DnsWorkerHandle,
-    udp_stream: UdpStream<UdpSocket>,
-    buf_stream_handle: BufStreamHandle,
 }
 
-impl DnsWorker {
-    pub(crate) async fn new<A: ToSocketAddrs>(listening_addr: A) -> std::io::Result<Self> {
-        let socket = UdpSocket::bind(listening_addr).await?;
-        let (udp_stream, buf_stream_handle) = UdpStream::with_bound(socket);
-        Ok(DnsWorker {
-            handle: DnsWorkerHandle::new(),
-            udp_stream,
-            buf_stream_handle,
-        })
-    }
+impl RequestHandler for DnsRequestHandler {
+    type ResponseFuture = std::future::Ready<()>;
 
-    pub(crate) async fn run(mut self) {
-        let mut stream = Box::pin(self.udp_stream.filter_map(|serialized_message| async {
-            tracing::debug!("Received a DNS message.");
-            let serialized_message = serialized_message.unwrap();
-            let message = serialized_message.to_message().unwrap();
-            let queries = message.queries();
+    fn handle_request<R: trust_dns_server::server::ResponseHandler>(
+        &self,
+        request: Request,
+        mut response_handle: R,
+    ) -> Self::ResponseFuture {
+        let req_message = request.message;
+        let queries = req_message.queries();
+        fn process_query(queries: &[LowerQuery], handle: &DnsWorkerHandle) -> Option<Vec<Record>> {
             if queries.len() != 1 {
                 return None;
             }
@@ -74,7 +70,7 @@ impl DnsWorker {
                 (DNSClass::IN, RecordType::TXT) => (),
                 _ => return None,
             }
-            let name = q.name();
+            let name = q.original().name();
             tracing::debug!("Queried name: {}", &name);
             let mut labels = name.iter();
             let first_label = labels.next().map(|s| s.to_ascii_lowercase());
@@ -86,33 +82,80 @@ impl DnsWorker {
                 }
             }
             let parent_name = Name::from_labels(labels).unwrap();
-            let tokens = self.handle.get_tokens(&parent_name);
+            let tokens = handle.get_tokens(&parent_name);
             tracing::debug!("For {} tokens are {:?}.", &parent_name, &tokens);
             match tokens {
                 None => None,
                 Some(v) if v.is_empty() => None,
                 Some(v) => {
-                    tracing::debug!("Replying with tokens:");
-                    let mut m = message.clone();
-                    m.set_authoritative(true)
-                        .set_message_type(MessageType::Response)
-                        .set_recursion_available(false);
+                    let mut res = Vec::new();
                     for tk in v {
-                        tracing::debug!(" - {}", &tk);
-                        m.add_answer(Record::from_rdata(
+                        res.push(Record::from_rdata(
                             name.clone(),
                             1,
                             RData::TXT(TXT::new(vec![tk])),
                         ));
                     }
-                    let buf = m.to_vec().unwrap();
-                    Some(SerialMessage::new(buf, serialized_message.addr()))
+                    Some(res)
                 }
             }
-        }));
-        while let Some(serial_reply) = stream.next().await {
-            self.buf_stream_handle.send(serial_reply).unwrap()
         }
+        let answer_records = process_query(queries, &self.handle);
+        if let Some(answer_records) = answer_records {
+            tracing::debug!("Replying with tokens:");
+            let mut header = Header::new();
+            header
+                .set_id(req_message.id())
+                .set_message_type(MessageType::Response)
+                .set_op_code(req_message.op_code())
+                .set_authoritative(true)
+                .set_truncated(false)
+                .set_recursion_available(false)
+                .set_recursion_desired(req_message.recursion_desired())
+                .set_authentic_data(false)
+                .set_checking_disabled(req_message.checking_disabled())
+                .set_response_code(ResponseCode::NoError)
+                .set_query_count(1)
+                .set_answer_count(answer_records.len().try_into().unwrap())
+                .set_name_server_count(0)
+                .set_additional_count(0);
+
+            let response = MessageResponseBuilder::new(Some(req_message.raw_queries())).build(
+                header,
+                Box::new(answer_records.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
+                Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
+                Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
+                Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
+            );
+            response_handle.send_response(response).unwrap();
+        }
+        std::future::ready(())
+    }
+}
+
+pub(crate) struct DnsWorker {
+    serv_future: ServerFuture<DnsRequestHandler>,
+    handle: DnsWorkerHandle,
+}
+
+impl DnsWorker {
+    pub(crate) async fn new<A: ToSocketAddrs>(listening_addr: A) -> std::io::Result<Self> {
+        let handle = DnsWorkerHandle::new();
+        let mut serv_future = ServerFuture::new(DnsRequestHandler {
+            handle: handle.clone(),
+        });
+        let udp_socket = UdpSocket::bind(&listening_addr).await?;
+        serv_future.register_socket(udp_socket);
+        let tcp_listener = TcpListener::bind(&listening_addr).await?;
+        serv_future.register_listener(tcp_listener, Duration::from_secs(60));
+        Ok(DnsWorker {
+            serv_future,
+            handle,
+        })
+    }
+
+    pub(crate) async fn run(self) -> std::result::Result<(), ProtoError> {
+        self.serv_future.block_until_done().await
     }
 
     /// Get a reference to the dns worker's handle.
