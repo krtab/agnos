@@ -1,6 +1,6 @@
 #![allow(unreachable_code)]
 
-use clap::{crate_authors, crate_description, crate_name, crate_version, Arg};
+use clap::Arg;
 use futures_util::future::join_all;
 use std::{sync::Arc, time::Duration};
 use tracing::{debug_span, instrument, Instrument};
@@ -198,7 +198,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
     // Logging setup
     color_eyre::install()?;
 
-    let cli_ops = clap::app_from_crate!()
+    let cli_ops = clap::command!()
         .setting(clap::AppSettings::ArgRequiredElseHelp)
         .arg(
             Arg::with_name("config")

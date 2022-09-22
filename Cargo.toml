@@ -14,17 +14,16 @@ categories = ["command-line-utilities"]
 [dependencies]
 acme2 = "0.5"
 base64 = "0.13"
-color-eyre = "0.5"
+color-eyre = "0.6.2"
 eyre = "0.6.5"
 futures-util = "0.3.18"
 openssl = "0.10.38"
 reqwest = "0.11.7"
-sha2 = "0.9.8"
+sha2 = "0.10.6"
 toml = "0.5.8"
 tracing = "0.1.29"
 trust-dns-server = "0.20.3"
 trust-dns-proto = "0.20.3"
-clap = "2.34.0"
 
 [dependencies.serde]
 features = ["derive"]
@@ -37,5 +36,9 @@ version = "1.14.0"
 [dependencies.tracing-subscriber]
 version = "0.3.3"
 features = ["env-filter"]
+
+[dependencies.clap]
+version = "3.2.22"
+features = ["cargo"]
 
 [features]
