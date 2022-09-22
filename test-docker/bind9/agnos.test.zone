@@ -1,0 +1,19 @@
+$TTL    604800
+@       IN      SOA     ns1.agnos.test. root.agnos.test. (
+                  3       ; Serial
+             604800     ; Refresh
+              86400     ; Retry
+            2419200     ; Expire
+             604800 )   ; Negative Cache TTL
+;
+; name servers - NS records
+     IN      NS      ns1.agnos.test.
+
+; name servers - A records
+ns1.agnos.test.          IN      A      10.20.0.2
+
+agnos-ns.agnos.test.        IN      A      10.20.0.3
+_acme-challenge.a.agnos.test.   IN     NS      agnos-ns.doma.in
+_acme-challenge.b.agnos.test.   IN     NS      agnos-ns.doma.in
+_acme-challenge.c.agnos.test.   IN     NS      agnos-ns.doma.in
+_acme-challenge.subdomain.c.agnos.test.   IN     NS      agnos-ns.doma.in

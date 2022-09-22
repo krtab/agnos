@@ -1,0 +1,9 @@
+options {
+    directory "/var/cache/bind";
+    
+    listen-on { any; };
+
+    forwarders {
+        10.20.0.3;
+    };
+};

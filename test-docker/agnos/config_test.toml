@@ -1,0 +1,33 @@
+# Address for the DNS server to listen on.
+# The port should probably be 53.
+dns_listen_adr = "0.0.0.0:53"
+
+# A first account
+# accounts are identified by
+# their email and their private key
+[[accounts]]
+email= "contact@mail1.test.com"
+private_key_path = "priv_key_1.pem"
+
+# A first certificate ordered for that account.
+[[accounts.certificates]]
+domains =  ["a.agnos.test"]
+fullchain_output_file = "fullchain_A.pem"
+key_output_file = "cert_key_A.pem"
+
+# A second certificate ordered for that account.
+[[accounts.certificates]]
+domains =  ["b.agnos.test","*.b.agnos.test"]
+fullchain_output_file = "fullchain_B.pem"
+key_output_file = "cert_key_B.pem"
+
+# A second account
+[[accounts]]
+email = "contac2@mail2.test.com"
+private_key_path = "priv_key_2.pem"
+
+# The only certificate for that second account
+[[accounts.certificates]]
+domains = ["c.agnos.test","subdomain.c.agnos.test"]
+fullchain_output_file = "fullchain2.pem"
+key_output_file = "cert_key_2.pem"
