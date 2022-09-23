@@ -2,6 +2,7 @@
 
 use clap::Arg;
 use futures_util::future::join_all;
+use reqwest::Certificate;
 use std::{sync::Arc, time::Duration};
 use tracing::{debug_span, instrument, Instrument};
 
@@ -222,6 +223,10 @@ async fn main() -> color_eyre::eyre::Result<()> {
             "Use the given URL as ACME server. Incompatible \
             with the'--no-staging' option"
         ))
+        .arg(Arg::with_name("acme-serv-ca").long("acme-serv-ca").takes_value(true).value_name("acme_ca_root.pem")
+        .help("The root certificate (in PEM format) of the ACME server's HTTPS interface. \
+           Mostly useful when testing with the pebbles ACME server."
+        ))
         .get_matches();
 
     let debug_mode = cli_ops.is_present("debug");
@@ -252,8 +257,14 @@ async fn main() -> color_eyre::eyre::Result<()> {
     } else {
         ACME_URL_STAGING.to_string()
     };
+    let mut http_client_bldr = reqwest::ClientBuilder::new();
+    if let Some(cert_path) = cli_ops.get_one::<String>("acme-serv-ca") {
+        let file_content = std::fs::read(cert_path)?;
+        let certif = Certificate::from_pem(&file_content)?;
+        http_client_bldr = http_client_bldr.add_root_certificate(certif);
+    }
     let acme_dir = acme2::DirectoryBuilder::new(acme_url)
-        .http_client(reqwest::ClientBuilder::new().build()?)
+        .http_client(http_client_bldr.build()?)
         .build()
         .await?;
     let barriers = vec![Barrier::new(); config.accounts.len()];
