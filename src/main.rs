@@ -218,6 +218,10 @@ async fn main() -> color_eyre::eyre::Result<()> {
             flag once you have tested your \
             configuration.",
         ))
+        .arg(Arg::with_name("acme-url").long("acme-url").takes_value(true).value_name("url").conflicts_with("no-staging").help(
+            "Use the given URL as ACME server. Incompatible \
+            with the'--no-staging' option"
+        ))
         .get_matches();
 
     let debug_mode = cli_ops.is_present("debug");
@@ -242,12 +246,12 @@ async fn main() -> color_eyre::eyre::Result<()> {
     let dns_handle = dns_worker.handle();
 
     let acme_url = if cli_ops.is_present("no-staging") {
-        ACME_URL
+        ACME_URL.to_string()
+    } else if let Some(url) = cli_ops.get_one::<String>("acme-url") {
+        url.clone()
     } else {
-        ACME_URL_STAGING
-    }
-    .to_string();
-
+        ACME_URL_STAGING.to_string()
+    };
     let acme_dir = acme2::DirectoryBuilder::new(acme_url)
         .http_client(reqwest::ClientBuilder::new().build()?)
         .build()
