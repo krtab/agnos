@@ -7,7 +7,7 @@ use std::{sync::Arc, time::Duration};
 use tracing::{debug_span, instrument, Instrument};
 use tracing_subscriber::prelude::*;
 
-use eyre::{eyre, bail};
+use eyre::{bail, eyre};
 use sha2::Digest;
 use tokio::{fs::File, io::AsyncWriteExt};
 
@@ -150,12 +150,18 @@ async fn process_config_certificate(
                     let challenge = challenge.validate().await?;
                     let challenge = challenge.wait_done(Duration::from_secs(5), 30).await?;
                     if !matches!(challenge.status, acme2::ChallengeStatus::Valid) {
-                        bail!("Challenge status is not valid, challenge status is: {:?}", challenge.status)
+                        bail!(
+                            "Challenge status is not valid, challenge status is: {:?}",
+                            challenge.status
+                        )
                     }
                     tracing::debug!("Requesting authorization validation from acme server.");
                     let authorization = auth.wait_done(Duration::from_secs(5), 10).await?;
                     if !matches!(authorization.status, acme2::AuthorizationStatus::Valid) {
-                        bail!("Authorization status is not valid, authorization status is: {:?}", authorization.status)
+                        bail!(
+                            "Authorization status is not valid, authorization status is: {:?}",
+                            authorization.status
+                        )
                     }
                     Ok(())
                 }
@@ -168,7 +174,10 @@ async fn process_config_certificate(
     tracing::info!("Waiting for order to be ready on ACME server.");
     let order = order.wait_ready(Duration::from_secs(5), 3).await?;
     if !matches!(order.status, acme2::OrderStatus::Ready) {
-        bail!("Order status is not Ready, order status is: {:?}", order.status)
+        bail!(
+            "Order status is not Ready, order status is: {:?}",
+            order.status
+        )
     }
     let pkey = acme2::gen_rsa_private_key(4096)?;
     let pkey_pem = pkey.private_key_to_pem_pkcs8()?;
@@ -176,7 +185,10 @@ async fn process_config_certificate(
     tracing::info!("Waiting for certificate signature by the ACME server.");
     let order = order.wait_done(Duration::from_secs(5), 3).await?;
     if !matches!(order.status, acme2::OrderStatus::Valid) {
-        bail!("Order status is not valid, order status is: {:?}", order.status)
+        bail!(
+            "Order status is not valid, order status is: {:?}",
+            order.status
+        )
     }
     tracing::info!("Downloading certificate.");
     let cert = order
@@ -228,14 +240,27 @@ async fn main() -> color_eyre::eyre::Result<()> {
             flag once you have tested your \
             configuration.",
         ))
-        .arg(Arg::with_name("acme-url").long("acme-url").takes_value(true).value_name("url").conflicts_with("no-staging").help(
-            "Use the given URL as ACME server. Incompatible \
-            with the'--no-staging' option"
-        ))
-        .arg(Arg::with_name("acme-serv-ca").long("acme-serv-ca").takes_value(true).value_name("acme_ca_root.pem")
-        .help("The root certificate (in PEM format) of the ACME server's HTTPS interface. \
-           Mostly useful when testing with the pebbles ACME server."
-        ))
+        .arg(
+            Arg::with_name("acme-url")
+                .long("acme-url")
+                .takes_value(true)
+                .value_name("url")
+                .conflicts_with("no-staging")
+                .help(
+                    "Use the given URL as ACME server. Incompatible \
+            with the'--no-staging' option",
+                ),
+        )
+        .arg(
+            Arg::with_name("acme-serv-ca")
+                .long("acme-serv-ca")
+                .takes_value(true)
+                .value_name("acme_ca_root.pem")
+                .help(
+                    "The root certificate (in PEM format) of the ACME server's HTTPS interface. \
+           Mostly useful when testing with the pebbles ACME server.",
+                ),
+        )
         .get_matches();
 
     let debug_mode = cli_ops.is_present("debug");
