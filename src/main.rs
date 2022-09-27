@@ -7,7 +7,7 @@ use std::{sync::Arc, time::Duration};
 use tracing::{debug_span, instrument, Instrument};
 use tracing_subscriber::prelude::*;
 
-use eyre::eyre;
+use eyre::{eyre, bail};
 use sha2::Digest;
 use tokio::{fs::File, io::AsyncWriteExt};
 
@@ -149,10 +149,14 @@ async fn process_config_certificate(
                     tracing::debug!("Requesting challenge validation from acme server.");
                     let challenge = challenge.validate().await?;
                     let challenge = challenge.wait_done(Duration::from_secs(5), 30).await?;
-                    assert_eq!(challenge.status, acme2::ChallengeStatus::Valid);
+                    if !matches!(challenge.status, acme2::ChallengeStatus::Valid) {
+                        bail!("Challenge status is not valid, challenge status is: {:?}", challenge.status)
+                    }
                     tracing::debug!("Requesting authorization validation from acme server.");
                     let authorization = auth.wait_done(Duration::from_secs(5), 10).await?;
-                    assert_eq!(authorization.status, acme2::AuthorizationStatus::Valid);
+                    if !matches!(authorization.status, acme2::AuthorizationStatus::Valid) {
+                        bail!("Authorization status is not valid, authorization status is: {:?}", authorization.status)
+                    }
                     Ok(())
                 }
                 .instrument(span)
@@ -163,13 +167,17 @@ async fn process_config_certificate(
 
     tracing::info!("Waiting for order to be ready on ACME server.");
     let order = order.wait_ready(Duration::from_secs(5), 3).await?;
-    assert_eq!(order.status, acme2::OrderStatus::Ready);
+    if !matches!(order.status, acme2::OrderStatus::Ready) {
+        bail!("Order status is not Ready, order status is: {:?}", order.status)
+    }
     let pkey = acme2::gen_rsa_private_key(4096)?;
     let pkey_pem = pkey.private_key_to_pem_pkcs8()?;
     let order = order.finalize(acme2::Csr::Automatic(pkey)).await?;
     tracing::info!("Waiting for certificate signature by the ACME server.");
     let order = order.wait_done(Duration::from_secs(5), 3).await?;
-    assert_eq!(order.status, acme2::OrderStatus::Valid);
+    if !matches!(order.status, acme2::OrderStatus::Valid) {
+        bail!("Order status is not valid, order status is: {:?}", order.status)
+    }
     tracing::info!("Downloading certificate.");
     let cert = order
         .certificate()
