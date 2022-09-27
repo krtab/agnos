@@ -5,6 +5,7 @@ use futures_util::future::join_all;
 use reqwest::Certificate;
 use std::{sync::Arc, time::Duration};
 use tracing::{debug_span, instrument, Instrument};
+use tracing_subscriber::prelude::*;
 
 use eyre::eyre;
 use sha2::Digest;
@@ -242,6 +243,8 @@ async fn main() -> color_eyre::eyre::Result<()> {
 
     tracing_subscriber::fmt()
         .with_env_filter(tracing_filter)
+        .finish()
+        .with(tracing_error::ErrorLayer::default())
         .init();
 
     let config_file = std::fs::read(cli_ops.value_of("config").unwrap())?;

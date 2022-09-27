@@ -52,6 +52,7 @@ dependencies = [
  "tokio",
  "toml",
  "tracing",
+ "tracing-error",
  "tracing-subscriber",
  "trust-dns-proto",
  "trust-dns-server",
