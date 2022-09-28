@@ -6,8 +6,6 @@ Agnos
 - [Agnos](#agnos)
     - [Presentation](#presentation)
         - [Why](#why)
-            - [> #### Pros](#--pros)
-            - [> #### Cons](#--cons)
         - [How](#how)
     - [Installation](#installation)
         - [Released binary](#released-binary)
@@ -34,11 +32,13 @@ Agnos is a single-binary program allowing you to easily obtain certificates (inc
 
 DNS-01 is summarized by Let's Encrypt documentation as such:
 
+> <!-- TOC ignore:true -->
 > #### Pros
 >
 > - You can use this challenge to issue certificates containing wildcard domain names.
 > - It works well even if you have multiple web servers.
 >
+> <!-- TOC ignore:true -->
 > #### Cons
 >
 > - Keeping API credentials on your web server is risky.
