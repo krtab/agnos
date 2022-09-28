@@ -1,6 +1,30 @@
 Agnos
 =====
 
+<!-- TOC -->
+
+- [Agnos](#agnos)
+    - [Presentation](#presentation)
+        - [Why](#why)
+            - [> #### Pros](#--pros)
+            - [> #### Cons](#--cons)
+        - [How](#how)
+    - [Installation](#installation)
+        - [Released binary](#released-binary)
+        - [Building](#building)
+        - [Setting capabilities to not run agnos as root](#setting-capabilities-to-not-run-agnos-as-root)
+    - [Usage](#usage)
+        - [Let's Encrypt accounts](#lets-encrypt-accounts)
+        - [Agnos configuration](#agnos-configuration)
+            - [General](#general)
+            - [Accounts](#accounts)
+            - [Certificates](#certificates)
+        - [Configuration of your DNS provider](#configuration-of-your-dns-provider)
+        - [Running agnos](#running-agnos)
+    - [Developpers](#developpers)
+
+<!-- /TOC -->
+
 ## Presentation
 
 Agnos is a single-binary program allowing you to easily obtain certificates (including wildcards) from [Let's Encrypt](https://letsencrypt.org/) using [DNS-01](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) challenges. It answers Let's Encrypt DNS queries on its own, bypassing the need for API calls to your DNS provider.
@@ -157,3 +181,11 @@ _acme-challenge.another.examp.le    NS      agnos-ns.doma.in
 `agnos` takes a single command line argument, the path to its configuration file, and two optional flags: `--no-staging` to use Let's Encrypt production server, and `--debug` to display more debug information. Help is available via `agnos --help`.
 
 When running, it checks whether the certificates of the full chain are going to expire in the next 30 days, and only renew them in that case, so it is suitable to be used in a cron job.
+
+## Developpers
+
+PRs and issues are very welcome.
+
+Build using usual `cargo` commands.
+
+The Makefile is for integration testing in a docker compose. At the root, run `sudo make` (sudo is required to use docker) to test agnos using pebble.
