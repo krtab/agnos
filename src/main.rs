@@ -1,4 +1,6 @@
 #![allow(unreachable_code)]
+#![forbid(missing_docs, rustdoc::broken_intra_doc_links)]
+#![doc = include_str!("../README.md")]
 
 use clap::{Arg, ArgAction};
 use futures_util::future::join_all;
@@ -23,11 +25,22 @@ use crate::config::Config;
 static ACME_URL_STAGING: &str = "https://acme-staging-v02.api.letsencrypt.org/directory";
 static ACME_URL: &str = "https://acme-v02.api.letsencrypt.org/directory";
 
+/// From RFC 8555:
+/// > A client fulfills this challenge by constructing a key authorization from the "token" value provided in the challenge and the client's account key.  The client then computes the SHA-256 digest of the key authorization. The record provisioned to the DNS contains the base64url encoding of this digest.
+/// This function computes the digest base64 encoding from the key authorization.
 fn key_auth_to_dns_txt(key_auth: &str) -> String {
     let hash = sha2::Sha256::digest(key_auth.as_bytes());
     base64::encode_config(hash, base64::URL_SAFE_NO_PAD)
 }
 
+/// Entry point at the [`config::Account`] level.
+///
+/// # Arguments
+///
+/// - `config_account`: One of the ACME account of the user configuration
+/// - `acme_dir`: A directory object representing an ACME server
+/// - `handle`: The DNS Worker which will reply to the challenge
+/// - `barrier`: A synchronisation barrier
 #[instrument(name = "", level="debug",skip_all,fields(account = %config_account.email))]
 async fn process_config_account(
     config_account: config::Account,
@@ -60,6 +73,14 @@ async fn process_config_account(
     Ok(())
 }
 
+/// Entry point at the [`config::Certificate`] level.
+///
+/// # Arguments
+///
+/// - `config_cert`: One of the ACME certificate of the user configuration
+/// - `account`: The ACME account to which the certificate belongs
+/// - `handle`: The DNS Worker which will reply to the challenge
+/// - `barrier`: A synchronisation barrier
 #[instrument(name = "", level="debug",skip_all,fields(cert = %config_cert.fullchain_output_file.display()))]
 async fn process_config_certificate(
     config_cert: config::Certificate,

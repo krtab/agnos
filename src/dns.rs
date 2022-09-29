@@ -1,3 +1,4 @@
+/// Replying to DNS challenges
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -17,12 +18,19 @@ use trust_dns_server::{
     ServerFuture,
 };
 
+/// The struct representing the DNS worker that will be passed around.
 #[derive(Clone, Debug)]
 pub(crate) struct DnsWorkerHandle {
+    /// Associate challenge token(s) to a domain name
     tokens: Arc<Mutex<HashMap<Name, Vec<String>>>>,
 }
 
 impl DnsWorkerHandle {
+    /// Add a challenge token to the DNS worker
+    ///
+    /// # Arguments:
+    /// - `name`: the domain name being challenged
+    /// - `val`: the value of the TXT field for that challenge
     pub(crate) fn add_token(&self, name: Name, val: String) {
         tracing::debug!("Adding token {} to name: {}.", &val, &name);
         let mut lock = self.tokens.lock().unwrap();
@@ -32,14 +40,12 @@ impl DnsWorkerHandle {
         }
     }
 
+    /// Get all challenge tokens associated with a given domain name
     pub(crate) fn get_tokens(&self, name: &Name) -> Option<Vec<String>> {
         self.tokens.lock().unwrap().get(name).cloned()
     }
 
-    // pub(crate) fn delete_token(&self, name: &Name) -> Option<String> {
-    //     self.tokens.lock().unwrap().remove(name)
-    // }
-
+    /// Create a new DnsWorkerHandle
     fn new() -> Self {
         Self {
             tokens: Arc::new(Mutex::new(HashMap::new())),
