@@ -269,7 +269,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
         )
         .get_matches();
 
-    let &debug_mode = cli_ops.get_one("debug").unwrap();
+    let debug_mode = cli_ops.get_flag("debug");
 
     let tracing_filter = std::env::var("RUST_LOG").unwrap_or(if debug_mode {
         format!(
@@ -292,7 +292,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
     let dns_worker = DnsWorker::new(config.dns_listen_adr).await?;
     let dns_handle = dns_worker.handle();
 
-    let acme_url = if *cli_ops.get_one("no-staging").unwrap() {
+    let acme_url = if cli_ops.get_flag("no-staging") {
         ACME_URL.to_string()
     } else if let Some(url) = cli_ops.get_one::<String>("acme-url") {
         url.clone()
