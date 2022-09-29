@@ -1,6 +1,6 @@
 #![allow(unreachable_code)]
 
-use clap::Arg;
+use clap::{Arg, ArgAction};
 use futures_util::future::join_all;
 use reqwest::Certificate;
 use std::{sync::Arc, time::Duration};
@@ -221,29 +221,35 @@ async fn main() -> color_eyre::eyre::Result<()> {
     color_eyre::install()?;
 
     let cli_ops = clap::command!()
-        .setting(clap::AppSettings::ArgRequiredElseHelp)
+        .arg_required_else_help(true)
         .arg(
-            Arg::with_name("config")
+            Arg::new("config")
                 .required(true)
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("config.toml")
                 .help("Path to the configuration file."),
         )
         .arg(
-            Arg::with_name("debug")
+            Arg::new("debug")
                 .long("debug")
-                .help("Activates debug output."),
+                .help("Activates debug output.")
+                .action(ArgAction::SetTrue),
         )
-        .arg(Arg::with_name("no-staging").long("no-staging").help(
-            "Use Let's Encrypt production server \
-            for certificate validation. Set this \
-            flag once you have tested your \
-            configuration.",
-        ))
         .arg(
-            Arg::with_name("acme-url")
+            Arg::new("no-staging")
+                .long("no-staging")
+                .help(
+                    "Use Let's Encrypt production server \
+                    for certificate validation. Set this \
+                    flag once you have tested your \
+                    configuration.",
+                )
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("acme-url")
                 .long("acme-url")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("url")
                 .conflicts_with("no-staging")
                 .help(
@@ -252,9 +258,9 @@ async fn main() -> color_eyre::eyre::Result<()> {
                 ),
         )
         .arg(
-            Arg::with_name("acme-serv-ca")
+            Arg::new("acme-serv-ca")
                 .long("acme-serv-ca")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("acme_ca_root.pem")
                 .help(
                     "The root certificate (in PEM format) of the ACME server's HTTPS interface. \
@@ -263,7 +269,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
         )
         .get_matches();
 
-    let debug_mode = cli_ops.is_present("debug");
+    let &debug_mode = cli_ops.get_one("debug").unwrap();
 
     let tracing_filter = std::env::var("RUST_LOG").unwrap_or(if debug_mode {
         format!(
@@ -280,13 +286,13 @@ async fn main() -> color_eyre::eyre::Result<()> {
         .with(tracing_error::ErrorLayer::default())
         .init();
 
-    let config_file = std::fs::read(cli_ops.value_of("config").unwrap())?;
+    let config_file = std::fs::read(cli_ops.get_one::<String>("config").unwrap())?;
     let config: Config = toml::from_slice(&config_file)?;
 
     let dns_worker = DnsWorker::new(config.dns_listen_adr).await?;
     let dns_handle = dns_worker.handle();
 
-    let acme_url = if cli_ops.is_present("no-staging") {
+    let acme_url = if *cli_ops.get_one("no-staging").unwrap() {
         ACME_URL.to_string()
     } else if let Some(url) = cli_ops.get_one::<String>("acme-url") {
         url.clone()
