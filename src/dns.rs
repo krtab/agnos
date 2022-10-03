@@ -1,4 +1,4 @@
-/// Replying to DNS challenges
+//! Replying to DNS challenges
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
