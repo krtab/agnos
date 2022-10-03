@@ -14,7 +14,7 @@ use sha2::Digest;
 use tokio::{fs::File, io::AsyncWriteExt};
 
 mod dns;
-use dns::{DnsWorker, DnsWorkerHandle};
+use dns::{DnsChallenges, DnsWorker};
 mod config;
 use trust_dns_proto::rr::Name;
 mod barrier;
@@ -45,7 +45,7 @@ fn key_auth_to_dns_txt(key_auth: &str) -> String {
 async fn process_config_account(
     config_account: config::Account,
     acme_dir: Arc<acme2::Directory>,
-    handle: DnsWorkerHandle,
+    handle: DnsChallenges,
     barrier: Barrier,
 ) -> eyre::Result<()> {
     tracing::info!("Processing account {}", &config_account.email);
@@ -85,7 +85,7 @@ async fn process_config_account(
 async fn process_config_certificate(
     config_cert: config::Certificate,
     account: Arc<acme2::Account>,
-    handle: DnsWorkerHandle,
+    handle: DnsChallenges,
     barrier: Barrier,
 ) -> eyre::Result<()> {
     tracing::info!(
@@ -311,7 +311,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
     let config: Config = toml::from_slice(&config_file)?;
 
     let dns_worker = DnsWorker::new(config.dns_listen_adr).await?;
-    let dns_handle = dns_worker.handle();
+    let dns_handle = dns_worker.challenges();
 
     let acme_url = if cli_ops.get_flag("no-staging") {
         ACME_URL.to_string()

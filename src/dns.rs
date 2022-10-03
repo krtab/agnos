@@ -18,14 +18,16 @@ use trust_dns_server::{
     ServerFuture,
 };
 
-/// The struct representing the DNS worker that will be passed around.
+/// The struct representing the DNS challenges that will be passed around.
+///
+/// Already contains an Arc<Mutex<...>> to be easy to pass around.
 #[derive(Clone, Debug)]
-pub(crate) struct DnsWorkerHandle {
+pub(crate) struct DnsChallenges {
     /// Associate challenge token(s) to a domain name
     tokens: Arc<Mutex<HashMap<Name, Vec<String>>>>,
 }
 
-impl DnsWorkerHandle {
+impl DnsChallenges {
     /// Add a challenge token to the DNS worker
     ///
     /// # Arguments:
@@ -45,7 +47,7 @@ impl DnsWorkerHandle {
         self.tokens.lock().unwrap().get(name).cloned()
     }
 
-    /// Create a new DnsWorkerHandle
+    /// Create a new DnsChallenges
     fn new() -> Self {
         Self {
             tokens: Arc::new(Mutex::new(HashMap::new())),
@@ -53,8 +55,12 @@ impl DnsWorkerHandle {
     }
 }
 
+/// Wrap a DnsChallenges to implement [`DnsRequestHandler`].
+///
+/// Implementing [`DnsRequestHandler`] tells trust DNS how to use
+/// our challenges database to answer DNS requests.
 struct DnsRequestHandler {
-    handle: DnsWorkerHandle,
+    challenges: DnsChallenges,
 }
 
 impl RequestHandler for DnsRequestHandler {
@@ -67,7 +73,7 @@ impl RequestHandler for DnsRequestHandler {
     ) -> Self::ResponseFuture {
         let req_message = request.message;
         let queries = req_message.queries();
-        fn process_query(queries: &[LowerQuery], handle: &DnsWorkerHandle) -> Option<Vec<Record>> {
+        fn process_query(queries: &[LowerQuery], handle: &DnsChallenges) -> Option<Vec<Record>> {
             if queries.len() != 1 {
                 return None;
             }
@@ -106,7 +112,7 @@ impl RequestHandler for DnsRequestHandler {
                 }
             }
         }
-        let answer_records = process_query(queries, &self.handle);
+        let answer_records = process_query(queries, &self.challenges);
         if let Some(answer_records) = answer_records {
             tracing::debug!("Replying with tokens:");
             let mut header = Header::new();
@@ -139,16 +145,21 @@ impl RequestHandler for DnsRequestHandler {
     }
 }
 
+/// The top-level struct and entry point of the module.
+///
+/// Creates all sub structs needed to answer DNS-01 challenges
+/// and add domain-name/tokens pairs to our challenge database.
 pub(crate) struct DnsWorker {
     serv_future: ServerFuture<DnsRequestHandler>,
-    handle: DnsWorkerHandle,
+    challenges: DnsChallenges,
 }
 
 impl DnsWorker {
+    /// Create a new DnsWorker
     pub(crate) async fn new<A: ToSocketAddrs>(listening_addr: A) -> std::io::Result<Self> {
-        let handle = DnsWorkerHandle::new();
+        let challenges = DnsChallenges::new();
         let mut serv_future = ServerFuture::new(DnsRequestHandler {
-            handle: handle.clone(),
+            challenges: challenges.clone(),
         });
         let udp_socket = UdpSocket::bind(&listening_addr).await?;
         serv_future.register_socket(udp_socket);
@@ -156,16 +167,17 @@ impl DnsWorker {
         serv_future.register_listener(tcp_listener, Duration::from_secs(60));
         Ok(DnsWorker {
             serv_future,
-            handle,
+            challenges,
         })
     }
 
+    /// Run the DNS server
     pub(crate) async fn run(self) -> std::result::Result<(), ProtoError> {
         self.serv_future.block_until_done().await
     }
 
-    /// Get a reference to the dns worker's handle.
-    pub(crate) fn handle(&self) -> &DnsWorkerHandle {
-        &self.handle
+    /// Get a reference to the dns worker's challenge database.
+    pub(crate) fn challenges(&self) -> &DnsChallenges {
+        &self.challenges
     }
 }
