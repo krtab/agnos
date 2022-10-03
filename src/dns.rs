@@ -43,8 +43,13 @@ impl DnsChallenges {
     }
 
     /// Get all challenge tokens associated with a given domain name
-    pub(crate) fn get_tokens(&self, name: &Name) -> Option<Vec<String>> {
-        self.tokens.lock().unwrap().get(name).cloned()
+    pub(crate) fn get_tokens(&self, name: &Name) -> Vec<String> {
+        self.tokens
+            .lock()
+            .unwrap()
+            .get(name)
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Create a new DnsChallenges
@@ -96,20 +101,18 @@ impl RequestHandler for DnsRequestHandler {
             let parent_name = Name::from_labels(labels).unwrap();
             let tokens = handle.get_tokens(&parent_name);
             tracing::debug!("For {} tokens are {:?}.", &parent_name, &tokens);
-            match tokens {
-                None => None,
-                Some(v) if v.is_empty() => None,
-                Some(v) => {
-                    let mut res = Vec::new();
-                    for tk in v {
-                        res.push(Record::from_rdata(
-                            name.clone(),
-                            1,
-                            RData::TXT(TXT::new(vec![tk])),
-                        ));
-                    }
-                    Some(res)
+            if tokens.is_empty() {
+                None
+            } else {
+                let mut res = Vec::new();
+                for tk in tokens {
+                    res.push(Record::from_rdata(
+                        name.clone(),
+                        1,
+                        RData::TXT(TXT::new(vec![tk])),
+                    ));
                 }
+                Some(res)
             }
         }
         let answer_records = process_query(queries, &self.challenges);
