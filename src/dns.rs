@@ -1,9 +1,12 @@
 //! Replying to DNS challenges
 use std::{
     collections::HashMap,
+    ops::Deref,
     sync::{Arc, Mutex},
     time::Duration,
 };
+
+use async_trait::async_trait;
 
 use tokio::net::{TcpListener, ToSocketAddrs, UdpSocket};
 use trust_dns_proto::{
@@ -14,7 +17,7 @@ use trust_dns_proto::{
 use trust_dns_server::{
     authority::MessageResponseBuilder,
     client::op::LowerQuery,
-    server::{Request, RequestHandler},
+    server::{Request, RequestHandler, ResponseHandler, ResponseInfo},
     ServerFuture,
 };
 
@@ -68,26 +71,21 @@ struct DnsRequestHandler {
     challenges: DnsChallenges,
 }
 
+#[async_trait]
 impl RequestHandler for DnsRequestHandler {
-    type ResponseFuture = std::future::Ready<()>;
-
-    fn handle_request<R: trust_dns_server::server::ResponseHandler>(
+    async fn handle_request<R: ResponseHandler>(
         &self,
-        request: Request,
+        request: &Request,
         mut response_handle: R,
-    ) -> Self::ResponseFuture {
-        let req_message = request.message;
-        let queries = req_message.queries();
-        fn process_query(queries: &[LowerQuery], handle: &DnsChallenges) -> Option<Vec<Record>> {
-            if queries.len() != 1 {
-                return None;
-            }
-            let q = &queries[0];
-            match (q.query_class(), q.query_type()) {
+    ) -> ResponseInfo {
+        let req_message = request.deref();
+        let queries = req_message.query();
+        fn process_query(query: &LowerQuery, handle: &DnsChallenges) -> Option<Vec<Record>> {
+            match (query.query_class(), query.query_type()) {
                 (DNSClass::IN, RecordType::TXT) => (),
                 _ => return None,
             }
-            let name = q.original().name();
+            let name = query.original().name();
             tracing::debug!("Queried name: {}", &name);
             let mut labels = name.iter();
             let first_label = labels.next().map(|s| s.to_ascii_lowercase());
@@ -135,16 +133,17 @@ impl RequestHandler for DnsRequestHandler {
                 .set_name_server_count(0)
                 .set_additional_count(0);
 
-            let response = MessageResponseBuilder::new(Some(req_message.raw_queries())).build(
+            let response = MessageResponseBuilder::from_message_request(req_message).build(
                 header,
                 Box::new(answer_records.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
                 Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
                 Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
                 Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
             );
-            response_handle.send_response(response).unwrap();
+            response_handle.send_response(response).await.unwrap()
+        } else {
+            todo!()
         }
-        std::future::ready(())
     }
 }
 

@@ -40,6 +40,7 @@ name = "agnos"
 version = "0.1.0-alpha"
 dependencies = [
  "acme2",
+ "async-trait",
  "base64",
  "clap",
  "color-eyre",
@@ -56,15 +57,6 @@ dependencies = [
  "tracing-subscriber",
  "trust-dns-proto",
  "trust-dns-server",
-]
-
-[[package]]
-name = "aho-corasick"
-version = "0.7.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4f55bd91a0978cbfd91c457a164bab8b4001c833b7f323132c0a4e1922dd44e"
-dependencies = [
- "memchr",
 ]
 
 [[package]]
@@ -282,27 +274,14 @@ checksum = "c34f04666d835ff5d62e058c3995147c06f42fe86ff053337632bca83e42702d"
 
 [[package]]
 name = "enum-as-inner"
-version = "0.3.4"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "570d109b813e904becc80d8d5da38376818a143348413f7149f1340fe04754d4"
+checksum = "c9720bba047d567ffc8a3cba48bf19126600e249ab7f128e9233e6376976a116"
 dependencies = [
  "heck",
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "env_logger"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a19187fea3ac7e84da7dacf48de0c45d63c6a76f9490dae389aead16c243fce3"
-dependencies = [
- "atty",
- "humantime",
- "log",
- "regex",
- "termcolor",
 ]
 
 [[package]]
@@ -523,12 +502,6 @@ name = "httpdate"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
-
-[[package]]
-name = "humantime"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hyper"
@@ -957,8 +930,6 @@ version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c4eb3267174b8c6c2f654116623910a0fef09c4753f8dd83db29c48a0df988b"
 dependencies = [
- "aho-corasick",
- "memchr",
  "regex-syntax",
 ]
 
@@ -1470,29 +1441,29 @@ dependencies = [
 
 [[package]]
 name = "trust-dns-client"
-version = "0.20.4"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b4ef9b9bde0559b78a4abb00339143750085f05e5a453efb7b8bef1061f09dc"
+checksum = "6c408c32e6a9dbb38037cece35740f2cf23c875d8ca134d33631cec83f74d3fe"
 dependencies = [
  "cfg-if",
  "data-encoding",
  "futures-channel",
  "futures-util",
  "lazy_static",
- "log",
  "radix_trie",
  "rand",
  "thiserror",
  "time",
  "tokio",
+ "tracing",
  "trust-dns-proto",
 ]
 
 [[package]]
 name = "trust-dns-proto"
-version = "0.20.4"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca94d4e9feb6a181c690c4040d7a24ef34018d8313ac5044a61d21222ae24e31"
+checksum = "4f7f83d1e4a0e4358ac54c5c3681e5d7da5efc5a7a632c90bb6d6669ddd9bc26"
 dependencies = [
  "async-trait",
  "cfg-if",
@@ -1504,34 +1475,33 @@ dependencies = [
  "idna 0.2.3",
  "ipnet",
  "lazy_static",
- "log",
  "rand",
  "smallvec",
  "thiserror",
  "tinyvec",
  "tokio",
+ "tracing",
  "url",
 ]
 
 [[package]]
 name = "trust-dns-server"
-version = "0.20.4"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88890d985c620b6027a0b85b71b772d35c6fcc3c8e6bd4e326af7dae0ea75d45"
+checksum = "1583cf9f8a359c9f16fdf760b79cb2be3f261b98db8027f81959c7a4f6645e2c"
 dependencies = [
  "async-trait",
  "bytes",
  "cfg-if",
  "enum-as-inner",
- "env_logger",
  "futures-executor",
  "futures-util",
- "log",
  "serde",
  "thiserror",
  "time",
  "tokio",
  "toml",
+ "tracing",
  "trust-dns-client",
  "trust-dns-proto",
 ]
