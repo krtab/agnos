@@ -1,11 +1,11 @@
 //! A poor-man adaptative barrier.
-//! 
-//! An adaptative barrier blocks all task `wait`ing  at it, 
-//! unless all of its non-yet dropped clones have also had their `wait` method 
+//!
+//! An adaptative barrier blocks all task `wait`ing  at it,
+//! unless all of its non-yet dropped clones have also had their `wait` method
 //! called.
-//! 
+//!
 //! It is "adaptive" because the number of synchronizing task does not have to be known in advance.
-//! 
+//!
 //! More info:
 //! <https://users.rust-lang.org/t/a-poor-man-async-adaptive-barrier/68118>
 use tokio::sync::broadcast::{channel, error::RecvError, Sender};
@@ -24,7 +24,7 @@ pub(crate) struct Barrier {
 
 impl Barrier {
     /// Enters "waiting" mode.
-    /// 
+    ///
     ///  Waiting for all existing clones to
     /// enter waitting mode as well.
     pub(crate) async fn wait(self) {
@@ -38,7 +38,7 @@ impl Barrier {
     }
 
     /// Create a new barrier.
-    /// 
+    ///
     /// Clone this barrier to wait for more threads.
     pub(crate) fn new() -> Self {
         Self {

@@ -1,7 +1,7 @@
 #![allow(unreachable_code)]
 #![forbid(missing_docs, rustdoc::broken_intra_doc_links)]
 //! Agnos is a single-binary program allowing you to easily obtain certificates (including wildcards) from [Let's Encrypt](https://letsencrypt.org/) using [DNS-01](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) challenges. It answers Let's Encrypt DNS queries on its own, bypassing the need for API calls to your DNS provider.
-//! 
+//!
 //! More info in the repository's [README](https://github.com/krtab/agnos#readme).
 
 use clap::{Arg, ArgAction};

@@ -1,8 +1,8 @@
 //! This module defines structs for serde based
 //! deserialization of the configuration
-//! 
+//!
 //! The hierarchy is
-//! 
+//!
 //! ```
 //!  Config > Account > Certificate
 //! ```
