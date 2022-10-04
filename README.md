@@ -116,7 +116,7 @@ openssl genrsa 4096 > /path/to/store/the/key.pem
 
 Agnos is configured via a single [TOML](https://toml.io/) file. A commented example is available in [config_example.toml](https://github.com/krtab/agnos/blob/main/config_example.toml).
 
-It is advised to absolute rather than relative paths in the configuration file.
+It is advised to use absolute rather than relative paths in the configuration file.
 
 There are three "levels" in the configuration:
 
