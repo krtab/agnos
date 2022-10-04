@@ -1,0 +1,3 @@
+[submodule "aur_package"]
+	path = aur_package
+	url = ssh://aur@aur.archlinux.org/agnos.git

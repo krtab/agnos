@@ -15,6 +15,7 @@ Agnos
         - [How](#how)
     - [Installation](#installation)
         - [Released binary](#released-binary)
+        - [AUR package](#aur-package)
         - [Building](#building)
         - [Setting capabilities to not run agnos as root](#setting-capabilities-to-not-run-agnos-as-root)
     - [Usage](#usage)
@@ -73,6 +74,10 @@ This instructions are given for a Linux system but a similar process will likely
 ### Released binary
 
 Pre-compiled binaries for (relatively recent) Linux/amd64 are available for every tagged [release](https://github.com/krtab/agnos/releases).
+
+### AUR package
+
+Agnos is available in the [AUR](https://aur.archlinux.org/packages/agnos). You can install it using: `yay -S agnos`. 
 
 ### Building
 
