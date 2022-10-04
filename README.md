@@ -1,3 +1,9 @@
+[<img src="resources/red-iron.png" alt="drawing" width="365"/>](https://red-iron.eu/)
+
+[![Crates.io badge](https://img.shields.io/crates/v/agnos?style=flat-square)](https://crates.io/crates/agnos)
+[![github release badge badge](https://img.shields.io/github/v/release/krtab/agnos?style=flat-square)](https://github.com/krtab/agnos/releases/latest)
+![github downloads badge](https://img.shields.io/github/downloads/krtab/agnos/total?style=flat-square)
+
 Agnos
 =====
 
