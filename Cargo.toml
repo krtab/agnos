@@ -8,7 +8,7 @@ using dns-01 without the need for API access to your DNS provider."""
 readme = "README.md"
 repository = "https://github.com/krtab/agnos"
 license = "MIT"
-exclude = [".github"]
+exclude = [".github","Makefile",".dockerignore","config_example.toml","test-docker"]
 categories = ["command-line-utilities"]
 
 [dependencies]
