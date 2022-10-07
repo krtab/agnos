@@ -1,52 +1,31 @@
-[<img src="resources/red-iron.png" alt="drawing" width="365"/>](https://red-iron.eu/)
-
 [![Crates.io badge](https://img.shields.io/crates/v/agnos?style=flat-square)](https://crates.io/crates/agnos)
 [![github release badge badge](https://img.shields.io/github/v/release/krtab/agnos?style=flat-square)](https://github.com/krtab/agnos/releases/latest)
 ![github downloads badge](https://img.shields.io/github/downloads/krtab/agnos/total?style=flat-square)
+<br/>
+<img src="resources/Banner-optimized.png" alt="drawing" width="372"/>
+<br/>
+[<img src="resources/red-iron.png" alt="This project is proudly sponsored by Red Iron, the Rust division of OCamlPro" width="372"/>](https://red-iron.eu/)
 
-Agnos
-=====
 
-<!-- TOC -->
-
-- [Agnos](#agnos)
-    - [Presentation](#presentation)
-        - [Why](#why)
-        - [How](#how)
-    - [Installation](#installation)
-        - [Released binary](#released-binary)
-        - [AUR package](#aur-package)
-        - [Building](#building)
-        - [Setting capabilities to not run agnos as root](#setting-capabilities-to-not-run-agnos-as-root)
-    - [Usage](#usage)
-        - [Let's Encrypt accounts](#lets-encrypt-accounts)
-        - [Agnos configuration](#agnos-configuration)
-            - [General](#general)
-            - [Accounts](#accounts)
-            - [Certificates](#certificates)
-        - [Configuration of your DNS provider](#configuration-of-your-dns-provider)
-        - [Running agnos](#running-agnos)
-    - [Developpers](#developpers)
-
-<!-- /TOC -->
-
-## Presentation
+<!-- TOC ignore:true -->
+# Presentation
 
 Agnos is a single-binary program allowing you to easily obtain certificates (including wildcards) from [Let's Encrypt](https://letsencrypt.org/) using [DNS-01](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) challenges. It answers Let's Encrypt DNS queries on its own, bypassing the need for API calls to your DNS provider.
 
-### Why
+<!-- TOC ignore:true -->
+## Why
 
 
 DNS-01 is summarized by Let's Encrypt documentation as such:
 
 > <!-- TOC ignore:true -->
-> #### Pros
+> ### Pros
 >
 > - You can use this challenge to issue certificates containing wildcard domain names.
 > - It works well even if you have multiple web servers.
 >
 > <!-- TOC ignore:true -->
-> #### Cons
+> ### Cons
 >
 > - Keeping API credentials on your web server is risky.
 > - Your DNS provider might not offer an API.
@@ -59,7 +38,8 @@ By serving its own DNS answers, agnos:
 
 Hence, **agnos removes virtually all downsides of dns-01 challenges**.
 
-### How
+<!-- TOC ignore:true -->
+## How
 
 
 Agnos leverages let's encrypt capability to follow DNS `NS` records. It requires you to add to your DNS zone:
@@ -67,19 +47,41 @@ Agnos leverages let's encrypt capability to follow DNS `NS` records. It requires
 1. An `A` (or `AAAA`) record pointing to the public facing IP address of the server on which agnos will run. On this server, UDP port 53 (the one used by DNS) should be open and free.
 2. For each domain you will want to validate, a `NS` record for the corresponding `_acme-challenge` sub-domain, indicating that agnos should be used as a name server for this specific domain.
 
-## Installation
+<!-- TOC ignore:true -->
+# Table of content
+
+<!-- TOC -->
+
+1. [Installation](#installation)
+    1. [Released binary](#released-binary)
+    1. [AUR package](#aur-package)
+    1. [Building](#building)
+    1. [Setting capabilities to not run agnos as root](#setting-capabilities-to-not-run-agnos-as-root)
+1. [Usage](#usage)
+    1. [Let's Encrypt accounts](#lets-encrypt-accounts)
+    1. [Agnos configuration](#agnos-configuration)
+        1. [General](#general)
+        1. [Accounts](#accounts)
+        1. [Certificates](#certificates)
+    1. [Configuration of your DNS provider](#configuration-of-your-dns-provider)
+    1. [Running agnos](#running-agnos)
+1. [Developpers](#developpers)
+
+<!-- /TOC -->
+
+# Installation
 
 This instructions are given for a Linux system but a similar process will likely work on all Unixes, and maybe windows.
 
-### Released binary
+## Released binary
 
 Pre-compiled binaries for (relatively recent) Linux/amd64 are available for every tagged [release](https://github.com/krtab/agnos/releases).
 
-### AUR package
+## AUR package
 
 Agnos is available in the [AUR](https://aur.archlinux.org/packages/agnos). You can install it using: `yay -S agnos`. 
 
-### Building
+## Building
 
 Agnos is written in Rust. To build it you will need to have the rust toolchain installed. 
 
@@ -91,7 +93,7 @@ cargo build --release
 mv target/release/agnos agnos
 ```
 
-### Setting capabilities to not run agnos as root
+## Setting capabilities to not run agnos as root
 
 Because agnos listen on the low-numbered port 53, it requires special privileges. Running it as root will do, but if you (understandably) don't want to do that, the following command is for you:
 
@@ -101,9 +103,9 @@ setcap 'cap_net_bind_service=+ep' agnos
 # agnos is the file of the binary as compiled above
 ```
 
-## Usage
+# Usage
 
-### Let's Encrypt accounts
+## Let's Encrypt accounts
 
 Let's Encrypt accounts are identified by an e-mail address and a private RSA key. To generate such a key use the following command:
 
@@ -117,7 +119,7 @@ or if you prefer a larger key:
 openssl genrsa 4096 > /path/to/store/the/key.pem
 ```
 
-### Agnos configuration
+## Agnos configuration
 
 Agnos is configured via a single [TOML](https://toml.io/) file. A commented example is available in [config_example.toml](https://github.com/krtab/agnos/blob/main/config_example.toml).
 
@@ -125,7 +127,7 @@ It is advised to use absolute rather than relative paths in the configuration fi
 
 There are three "levels" in the configuration:
 
-#### 1. General
+### 1. General
 
 The general configuration level is where the IP address to listen on is provided.
 
@@ -133,7 +135,7 @@ The general configuration level is where the IP address to listen on is provided
 dns_listen_adr = "1.2.3.4:53"
 ```
 
-#### 2. Accounts
+### 2. Accounts
 
 Several Let's Encrypt accounts can be specified. For each account, an e-mail address and the path to the account RSA private key must be provided.
 
@@ -143,7 +145,7 @@ email= "contact@doma.in"
 private_key_path = "priv_key.pem"
 ```
 
-#### 3. Certificates
+### 3. Certificates
 
 For each account, several certificates can be ordered. Each certificate can cover multiple domains. On disk, a certificate is represented by two files: the full certificate chain, and the private key of the certificate (generated by agnos and different from the account private key).
 
@@ -154,7 +156,7 @@ fullchain_output_file = "fullchain_A.pem"
 key_output_file = "cert_key_A.pem"
 ```
 
-### Configuration of your DNS provider
+## Configuration of your DNS provider
 
 Say that we have the following domains we want to obtain a certificate (or multiple certificates) for: 
 - `doma.in`
@@ -187,13 +189,13 @@ _acme-challenge.another.examp.le    NS      agnos-ns.doma.in
 
 **Note:** Though it may seem cumbersome, this must only be done once from your DNS provider web interface. Once it is done, you will never have to touch a `TXT` record.
 
-### Running agnos
+## Running agnos
 
 `agnos` takes a single command line argument, the path to its configuration file, and two optional flags: `--no-staging` to use Let's Encrypt production server, and `--debug` to display more debug information. Help is available via `agnos --help`.
 
 When running, it checks whether the certificates of the full chain are going to expire in the next 30 days, and only renew them in that case, so it is suitable to be used in a cron job.
 
-## Developpers
+# Developpers
 
 PRs and issues are very welcome.
 
