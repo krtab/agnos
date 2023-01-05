@@ -80,6 +80,9 @@ impl RequestHandler for DnsRequestHandler {
     ) -> ResponseInfo {
         let req_message = request.deref();
         let queries = req_message.query();
+        // this is only to allow for early None return
+        // Could be replaced with a labeled block since
+        // Rust 1.65
         fn process_query(query: &LowerQuery, handle: &DnsChallenges) -> Option<Vec<Record>> {
             match (query.query_class(), query.query_type()) {
                 (DNSClass::IN, RecordType::TXT) => (),
@@ -88,6 +91,8 @@ impl RequestHandler for DnsRequestHandler {
             let name = query.original().name();
             tracing::debug!("Queried name: {}", &name);
             let mut labels = name.iter();
+            // Pop first label ("part between dots") of domain name and
+            // expect it to be "_acme-challenge".
             let first_label = labels.next().map(|s| s.to_ascii_lowercase());
             match first_label.as_deref() {
                 Some(b"_acme-challenge") => {}
