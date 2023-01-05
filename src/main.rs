@@ -212,7 +212,7 @@ async fn process_config_certificate(
             order.status
         )
     }
-    let pkey = acme2::gen_rsa_private_key(4096)?;
+    let pkey = acme2::gen_ec_p256_private_key()?;
     let pkey_pem = pkey.private_key_to_pem_pkcs8()?;
     let order = order.finalize(acme2::Csr::Automatic(pkey)).await?;
     tracing::info!("Waiting for certificate signature by the ACME server.");
