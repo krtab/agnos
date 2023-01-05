@@ -118,37 +118,32 @@ impl RequestHandler for DnsRequestHandler {
                 Some(res)
             }
         }
-        let answer_records = process_query(queries, &self.challenges);
-        if let Some(answer_records) = answer_records {
-            tracing::debug!("Replying with tokens:");
-            let mut header = Header::new();
-            header
-                .set_id(req_message.id())
-                .set_message_type(MessageType::Response)
-                .set_op_code(req_message.op_code())
-                .set_authoritative(true)
-                .set_truncated(false)
-                .set_recursion_available(false)
-                .set_recursion_desired(req_message.recursion_desired())
-                .set_authentic_data(false)
-                .set_checking_disabled(req_message.checking_disabled())
-                .set_response_code(ResponseCode::NoError)
-                .set_query_count(1)
-                .set_answer_count(answer_records.len().try_into().unwrap())
-                .set_name_server_count(0)
-                .set_additional_count(0);
+        let answer_records = process_query(queries, &self.challenges).unwrap_or_default();
+        let mut header = Header::new();
+        header
+            .set_id(req_message.id())
+            .set_message_type(MessageType::Response)
+            .set_op_code(req_message.op_code())
+            .set_authoritative(true)
+            .set_truncated(false)
+            .set_recursion_available(false)
+            .set_recursion_desired(req_message.recursion_desired())
+            .set_authentic_data(false)
+            .set_checking_disabled(req_message.checking_disabled())
+            .set_response_code(ResponseCode::NoError)
+            .set_query_count(1)
+            .set_answer_count(answer_records.len().try_into().unwrap())
+            .set_name_server_count(0)
+            .set_additional_count(0);
 
-            let response = MessageResponseBuilder::from_message_request(req_message).build(
-                header,
-                Box::new(answer_records.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
-                Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
-                Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
-                Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
-            );
-            response_handle.send_response(response).await.unwrap()
-        } else {
-            todo!()
-        }
+        let response = MessageResponseBuilder::from_message_request(req_message).build(
+            header,
+            Box::new(answer_records.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
+            Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
+            Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
+            Box::new(None.iter()) as Box<dyn Iterator<Item = &Record> + Send>,
+        );
+        response_handle.send_response(response).await.unwrap()
     }
 }
 
