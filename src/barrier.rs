@@ -4,7 +4,8 @@
 //! unless all of its non-yet dropped clones have also had their `wait` method
 //! called.
 //!
-//! It is "adaptive" because the number of synchronizing task does not have to be known in advance.
+//! It is "adaptive" because the number of synchronizing task does not have to
+//! be known in advance.
 //!
 //! More info:
 //! <https://users.rust-lang.org/t/a-poor-man-async-adaptive-barrier/68118>

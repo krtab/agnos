@@ -28,8 +28,13 @@ static ACME_URL_STAGING: &str = "https://acme-staging-v02.api.letsencrypt.org/di
 static ACME_URL: &str = "https://acme-v02.api.letsencrypt.org/directory";
 
 /// From RFC 8555:
-/// > A client fulfills this challenge by constructing a key authorization from the "token" value provided in the challenge and the client's account key.  The client then computes the SHA-256 digest of the key authorization. The record provisioned to the DNS contains the base64url encoding of this digest.
-/// This function computes the digest base64 encoding from the key authorization.
+/// > A client fulfills this challenge by constructing a key authorization from
+/// > the "token" value provided in the challenge and the client's account key.
+/// > The client then computes the SHA-256 digest of the key authorization. The
+/// > record provisioned to the DNS contains the base64url encoding of this
+/// > digest.
+/// This function computes the digest base64 encoding from the key
+/// authorization.
 fn key_auth_to_dns_txt(key_auth: &str) -> String {
     let hash = sha2::Sha256::digest(key_auth.as_bytes());
     base64::encode_config(hash, base64::URL_SAFE_NO_PAD)
