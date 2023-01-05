@@ -10,6 +10,8 @@
 <!-- TOC ignore:true -->
 # Presentation
 
+For an introduction to the ACME protocol and its DNS verification part, you can refer to our beta release [blog post](https://ocamlpro.com/blog/2022_10_05_agnos_0.1.0-beta).
+
 Agnos is a single-binary program allowing you to easily obtain certificates (including wildcards) from [Let's Encrypt](https://letsencrypt.org/) using [DNS-01](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) challenges. It answers Let's Encrypt DNS queries on its own, bypassing the need for API calls to your DNS provider.
 
 <!-- TOC ignore:true -->
