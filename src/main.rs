@@ -45,6 +45,11 @@ fn key_auth_to_dns_txt(key_auth: &str) -> String {
     base64::encode_engine(&hash, &BASE64_ENGINE)
 }
 
+// A lot of the code here relies on the use of a "barrier". This is
+// because without synchronziation, the following race condition used to occur.
+// Unfortunately, the exact scenario has been lost in time.
+
+
 /// Entry point at the [`config::Account`] level.
 ///
 /// # Arguments
@@ -300,6 +305,11 @@ async fn main() -> color_eyre::eyre::Result<()> {
            Mostly useful when testing with the pebbles ACME server.",
                 ),
         )
+        .arg(
+            Arg::new("no-wait")
+                .long("no-wait")
+                .action(ArgAction::SetTrue),
+        )
         .get_matches();
 
     let debug_mode = cli_ops.get_flag("debug");
@@ -342,7 +352,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
         .http_client(http_client_bldr.build()?)
         .build()
         .await?;
-    let barriers = vec![Barrier::new(); config.accounts.len()];
+    let barriers = vec![Barrier::new(cli_ops.get_flag("no-wait")); config.accounts.len()];
     let accounts_futures = config
         .accounts
         .into_iter()
