@@ -4,6 +4,7 @@
 //!
 //! More info in the repository's [README](https://github.com/krtab/agnos#readme).
 
+use base64::Engine;
 use clap::{Arg, ArgAction};
 use futures_util::future::join_all;
 use reqwest::Certificate;
@@ -26,10 +27,10 @@ use crate::config::Config;
 
 static ACME_URL_STAGING: &str = "https://acme-staging-v02.api.letsencrypt.org/directory";
 static ACME_URL: &str = "https://acme-v02.api.letsencrypt.org/directory";
-static BASE64_ENGINE: base64::engine::fast_portable::FastPortable = {
+static BASE64_ENGINE: base64::engine::GeneralPurpose = {
     let alpha = base64::alphabet::URL_SAFE;
-    let config = base64::engine::fast_portable::NO_PAD;
-    base64::engine::fast_portable::FastPortable::from(&alpha, config)
+    let config = base64::engine::general_purpose::NO_PAD;
+    base64::engine::GeneralPurpose::new(&alpha, config)
 };
 
 /// From RFC 8555:
@@ -42,7 +43,7 @@ static BASE64_ENGINE: base64::engine::fast_portable::FastPortable = {
 /// authorization.
 fn key_auth_to_dns_txt(key_auth: &str) -> String {
     let hash = sha2::Sha256::digest(key_auth.as_bytes());
-    base64::encode_engine(&hash, &BASE64_ENGINE)
+    BASE64_ENGINE.encode(&hash)
 }
 
 // A lot of the code here relies on the use of a "barrier". This is

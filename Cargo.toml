@@ -24,7 +24,7 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 acme2 = "0.5"
-base64 = "0.20.0"
+base64 = "0.21.0"
 color-eyre = "0.6.2"
 eyre = "0.6.5"
 futures-util = "0.3.18"
