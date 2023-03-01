@@ -350,8 +350,9 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_error::ErrorLayer::default())
         .init();
 
-    let config_file = std::fs::read(cli_ops.get_one::<String>("config").unwrap())?;
-    let config: Config = toml::from_slice(&config_file)?;
+    let config_file =
+        tokio::fs::read_to_string(cli_ops.get_one::<String>("config").unwrap()).await?;
+    let config: Config = toml::from_str(&config_file)?;
 
     let dns_worker = DnsWorker::new(config.dns_listen_adr).await?;
     let dns_handle = dns_worker.challenges();

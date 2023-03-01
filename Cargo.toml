@@ -29,7 +29,7 @@ futures-util = "0.3.18"
 openssl = "0.10.38"
 reqwest = "0.11.7"
 sha2 = "0.10.6"
-toml = "0.5.8"
+toml = { version = "0.7.2", default-features = false, features = ["parse"] }
 tracing = "0.1.29"
 tracing-error = "0.2.0"
 trust-dns-server = "0.22.0"
