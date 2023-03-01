@@ -25,8 +25,6 @@ categories = ["command-line-utilities"]
 [dependencies]
 acme2 = "0.5"
 base64 = "0.21.0"
-color-eyre = "0.6.2"
-eyre = "0.6.5"
 futures-util = "0.3.18"
 openssl = "0.10.38"
 reqwest = "0.11.7"
@@ -37,6 +35,7 @@ tracing-error = "0.2.0"
 trust-dns-server = "0.22.0"
 trust-dns-proto = "0.22.0"
 async-trait = "0.1.57"
+anyhow = "1.0.69"
 
 [dependencies.serde]
 features = ["derive"]

@@ -12,7 +12,7 @@ use std::{sync::Arc, time::Duration};
 use tracing::{debug_span, instrument, Instrument};
 use tracing_subscriber::prelude::*;
 
-use eyre::{bail, eyre};
+use anyhow::{anyhow, bail};
 use sha2::Digest;
 use tokio::io::AsyncWriteExt;
 
@@ -33,7 +33,7 @@ static BASE64_ENGINE: base64::engine::GeneralPurpose = {
     base64::engine::GeneralPurpose::new(&alpha, config)
 };
 
-fn create_restricted_file(path: impl AsRef<std::path::Path>) -> eyre::Result<tokio::fs::File> {
+fn create_restricted_file(path: impl AsRef<std::path::Path>) -> anyhow::Result<tokio::fs::File> {
     let mut open_opt = std::fs::OpenOptions::new();
     open_opt.write(true).create(true);
     #[cfg(target_os = "linux")]
@@ -76,7 +76,7 @@ async fn process_config_account(
     acme_dir: Arc<acme2::Directory>,
     handle: DnsChallenges,
     barrier: Barrier,
-) -> eyre::Result<()> {
+) -> anyhow::Result<()> {
     tracing::info!("Processing account {}", &config_account.email);
     let priv_key = {
         let buf = tokio::fs::read(&config_account.private_key_path).await?;
@@ -116,7 +116,7 @@ async fn process_config_certificate(
     account: Arc<acme2::Account>,
     handle: DnsChallenges,
     barrier: Barrier,
-) -> eyre::Result<()> {
+) -> anyhow::Result<()> {
     tracing::info!(
         "Processing certificate {}",
         &config_cert.fullchain_output_file.display()
@@ -127,7 +127,7 @@ async fn process_config_certificate(
                 tracing::info!("Certificate not found on disk, continuing...")
             }
             _ => {
-                eyre::bail!(e)
+                anyhow::bail!(e)
             }
         },
         Ok(f) => {
@@ -184,7 +184,7 @@ async fn process_config_certificate(
                     let challenge = auth.get_challenge("dns-01").unwrap();
                     let key = challenge
                         .key_authorization()?
-                        .ok_or_else(|| eyre!("Challenge's key was None"))?;
+                        .ok_or_else(|| anyhow!("Challenge's key was None"))?;
                     let txt_value = key_auth_to_dns_txt(&key);
                     tracing::debug!("TXT value: {}", txt_value);
                     // TODO: to check when clarifying FQDNs.
@@ -217,7 +217,7 @@ async fn process_config_certificate(
                 }
                 .instrument(span)
             });
-    let authorization_res: eyre::Result<Vec<_>> =
+    let authorization_res: anyhow::Result<Vec<_>> =
         join_all(authorizations_fut).await.into_iter().collect();
     authorization_res?;
 
@@ -244,7 +244,7 @@ async fn process_config_certificate(
     let cert = order
         .certificate()
         .await?
-        .ok_or_else(|| eyre!("Certificate was None"))?;
+        .ok_or_else(|| anyhow!("Certificate was None"))?;
     assert!(cert.len() > 1);
 
     tracing::info!(
@@ -271,10 +271,7 @@ async fn process_config_certificate(
 
 #[tokio::main]
 // #[instrument]
-async fn main() -> color_eyre::eyre::Result<()> {
-    // Logging setup
-    color_eyre::install()?;
-
+async fn main() -> anyhow::Result<()> {
     let cli_ops = clap::command!()
         .arg_required_else_help(true)
         .arg(
