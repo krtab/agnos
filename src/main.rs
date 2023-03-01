@@ -14,7 +14,7 @@ use tracing_subscriber::prelude::*;
 
 use eyre::{bail, eyre};
 use sha2::Digest;
-use tokio::{fs::File, io::AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 mod dns;
 use dns::{DnsChallenges, DnsWorker};
@@ -32,6 +32,18 @@ static BASE64_ENGINE: base64::engine::GeneralPurpose = {
     let config = base64::engine::general_purpose::NO_PAD;
     base64::engine::GeneralPurpose::new(&alpha, config)
 };
+
+fn create_restricted_file(path: impl AsRef<std::path::Path>) -> eyre::Result<tokio::fs::File> {
+    let mut open_opt = std::fs::OpenOptions::new();
+    open_opt.write(true).create(true);
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        open_opt.mode(0o640);
+    }
+    let std_file = open_opt.open(path)?;
+    Ok(std_file.into())
+}
 
 /// From RFC 8555:
 /// > A client fulfills this challenge by constructing a key authorization from
@@ -240,16 +252,21 @@ async fn process_config_certificate(
         "Writting certificate to file {}.",
         config_cert.fullchain_output_file.display()
     );
-    let mut output_file = File::create(&config_cert.fullchain_output_file).await?;
-    for c in cert {
-        output_file.write_all(&c.to_pem()?).await?;
-        output_file.write_all(b"\n").await?;
+    {
+        let mut certificate_file = create_restricted_file(&config_cert.fullchain_output_file)?;
+        for c in cert {
+            certificate_file.write_all(&c.to_pem()?).await?;
+            certificate_file.write_all(b"\n").await?;
+        }
     }
     tracing::info!(
         "Writting certificate key to file {}.",
         config_cert.key_output_file.display()
     );
-    tokio::fs::write(&config_cert.key_output_file, pkey_pem).await?;
+    {
+        let mut private_key_file = create_restricted_file(&config_cert.key_output_file)?;
+        private_key_file.write_all(&pkey_pem).await?;
+    }
     Ok(())
 }
 
