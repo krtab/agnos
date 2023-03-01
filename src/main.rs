@@ -55,7 +55,7 @@ fn create_restricted_file(path: impl AsRef<std::path::Path>) -> anyhow::Result<t
 /// authorization.
 fn key_auth_to_dns_txt(key_auth: &str) -> String {
     let hash = sha2::Sha256::digest(key_auth.as_bytes());
-    BASE64_ENGINE.encode(&hash)
+    BASE64_ENGINE.encode(hash)
 }
 
 // A lot of the code here relies on the use of a "barrier". This is
