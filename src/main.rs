@@ -285,6 +285,12 @@ async fn main() -> color_eyre::eyre::Result<()> {
                 .help("Path to the configuration file."),
         )
         .arg(
+            Arg::new("no-color")
+                .long("no-color")
+                .help("Deactivates colors in output")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
             Arg::new("debug")
                 .long("debug")
                 .help("Activates debug output.")
@@ -342,6 +348,7 @@ async fn main() -> color_eyre::eyre::Result<()> {
 
     tracing_subscriber::fmt()
         .with_env_filter(tracing_filter)
+        .with_ansi(!cli_ops.get_flag("no-color"))
         .finish()
         .with(tracing_error::ErrorLayer::default())
         .init();
