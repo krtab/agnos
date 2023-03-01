@@ -62,7 +62,6 @@ fn key_auth_to_dns_txt(key_auth: &str) -> String {
 // because without synchronziation, the following race condition used to occur.
 // Unfortunately, the exact scenario has been lost in time.
 
-
 /// Entry point at the [`config::Account`] level.
 ///
 /// # Arguments

@@ -52,7 +52,7 @@ impl Barrier {
     pub(crate) fn new(bypass: bool) -> Self {
         Self {
             inner: channel(1).0,
-            bypass
+            bypass,
         }
     }
 }
