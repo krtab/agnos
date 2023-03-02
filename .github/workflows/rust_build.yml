@@ -33,6 +33,7 @@ jobs:
              cargo build --locked --bins --release &&
              strip target/release/agnos &&
              strip target/release/agnos-generate-accounts-keys &&
+             mv target/release/agnos target/release/agnos_amd64 &&
              mv target/release/agnos-generate-accounts-keys target/release/agnos-generate-accounts-keys_amd64
 
       - name: Release
