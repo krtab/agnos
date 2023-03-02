@@ -121,6 +121,8 @@ or if you prefer a larger key:
 openssl genrsa 4096 > /path/to/store/the/key.pem
 ```
 
+Alternatively, you can use the provided `agnos-generate-accounts-keys` binary to automatically generate private keys for the accounts listed in the configuration file.
+
 ## Agnos configuration
 
 Agnos is configured via a single [TOML](https://toml.io/) file. A commented example is available in [config_example.toml](https://github.com/krtab/agnos/blob/main/config_example.toml).

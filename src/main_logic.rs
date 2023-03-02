@@ -65,6 +65,14 @@ pub async fn process_config_account(
 ) -> anyhow::Result<()> {
     tracing::info!("Processing account {}", &config_account.email);
     let priv_key = {
+        if !config_account.private_key_path.exists() {
+            bail!(
+                "Private key for account <{}>, expected to be located at {} does not exist. \
+                Consider generating it with agnos-generate-accounts-keys.",
+                config_account.email,
+                config_account.private_key_path.display()
+            )
+        }
         let buf = tokio::fs::read(&config_account.private_key_path).await?;
         openssl::pkey::PKey::private_key_from_pem(&buf)?
     };
