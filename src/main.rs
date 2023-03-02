@@ -284,7 +284,7 @@ async fn main() -> anyhow::Result<()> {
         .arg(
             Arg::new("no-color")
                 .long("no-color")
-                .help("Deactivates colors in output")
+                .help("Deactivates colors in output.")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -312,7 +312,7 @@ async fn main() -> anyhow::Result<()> {
                 .conflicts_with("no-staging")
                 .help(
                     "Use the given URL as ACME server. Incompatible \
-            with the'--no-staging' option",
+                    with the '--no-staging' option.",
                 ),
         )
         .arg(
@@ -322,13 +322,14 @@ async fn main() -> anyhow::Result<()> {
                 .value_name("acme_ca_root.pem")
                 .help(
                     "The root certificate (in PEM format) of the ACME server's HTTPS interface. \
-           Mostly useful when testing with the pebbles ACME server.",
+                    Mostly useful when testing with the pebbles ACME server.",
                 ),
         )
         .arg(
             Arg::new("no-wait")
                 .long("no-wait")
-                .action(ArgAction::SetTrue),
+                .action(ArgAction::SetTrue)
+                .hide(true),
         )
         .get_matches();
 
