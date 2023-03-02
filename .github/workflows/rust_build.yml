@@ -29,7 +29,11 @@ jobs:
           override: true
 
       - name: Build
-        run: cargo build --all --release && strip target/release/agnos && mv target/release/agnos target/release/agnos_amd64
+        run: >
+             cargo build --frozen --bins --release &&
+             strip target/release/agnos &&
+             strip target/release/agnos-generate-accounts-keys &&
+             mv target/release/agnos-generate-accounts-keys target/release/agnos-generate-accounts-keys_amd64
 
       - name: Release
         uses: softprops/action-gh-release@v1
@@ -37,5 +41,6 @@ jobs:
         with:
           files: |
             target/release/agnos_amd64
+            target/release/agnos-generate-accounts-keys_amd64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
