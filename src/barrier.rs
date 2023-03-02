@@ -19,7 +19,7 @@ enum Empty {}
 
 /// Main struct of the module.
 #[derive(Debug, Clone)]
-pub(crate) struct Barrier {
+pub struct Barrier {
     inner: Sender<Empty>,
     /// This is ot implement the no-wait
     /// CLI option, used to investigate the race condition
@@ -33,7 +33,7 @@ impl Barrier {
     ///
     ///  Waiting for all existing clones to
     /// enter waitting mode as well.
-    pub(crate) async fn wait(self) {
+    pub async fn wait(self) {
         if self.bypass {
             return;
         }
@@ -49,7 +49,7 @@ impl Barrier {
     /// Create a new barrier.
     ///
     /// Clone this barrier to wait for more threads.
-    pub(crate) fn new(bypass: bool) -> Self {
+    pub fn new(bypass: bool) -> Self {
         Self {
             inner: channel(1).0,
             bypass,

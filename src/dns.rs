@@ -25,7 +25,7 @@ use trust_dns_server::{
 ///
 /// Already contains an Arc<Mutex<...>> to be easy to pass around.
 #[derive(Clone, Debug)]
-pub(crate) struct DnsChallenges {
+pub struct DnsChallenges {
     /// Associate challenge token(s) to a domain name
     tokens: Arc<Mutex<HashMap<Name, Vec<String>>>>,
 }
@@ -36,7 +36,7 @@ impl DnsChallenges {
     /// # Arguments:
     /// - `name`: the domain name being challenged
     /// - `val`: the value of the TXT field for that challenge
-    pub(crate) fn add_token(&self, name: Name, val: String) {
+    pub fn add_token(&self, name: Name, val: String) {
         tracing::debug!("Adding token {} to name: {}.", &val, &name);
         let mut lock = self.tokens.lock().unwrap();
         lock.entry(name).or_default().push(val);
@@ -46,7 +46,7 @@ impl DnsChallenges {
     }
 
     /// Get all challenge tokens associated with a given domain name
-    pub(crate) fn get_tokens(&self, name: &Name) -> Vec<String> {
+    pub fn get_tokens(&self, name: &Name) -> Vec<String> {
         self.tokens
             .lock()
             .unwrap()
@@ -151,14 +151,14 @@ impl RequestHandler for DnsRequestHandler {
 ///
 /// Creates all sub structs needed to answer DNS-01 challenges
 /// and add domain-name/tokens pairs to our challenge database.
-pub(crate) struct DnsWorker {
+pub struct DnsWorker {
     serv_future: ServerFuture<DnsRequestHandler>,
     challenges: DnsChallenges,
 }
 
 impl DnsWorker {
     /// Create a new DnsWorker
-    pub(crate) async fn new<A: ToSocketAddrs>(listening_addr: A) -> std::io::Result<Self> {
+    pub async fn new<A: ToSocketAddrs>(listening_addr: A) -> std::io::Result<Self> {
         let challenges = DnsChallenges::new();
         let mut serv_future = ServerFuture::new(DnsRequestHandler {
             challenges: challenges.clone(),
@@ -174,12 +174,12 @@ impl DnsWorker {
     }
 
     /// Run the DNS server
-    pub(crate) async fn run(self) -> std::result::Result<(), ProtoError> {
+    pub async fn run(self) -> std::result::Result<(), ProtoError> {
         self.serv_future.block_until_done().await
     }
 
     /// Get a reference to the dns worker's challenge database.
-    pub(crate) fn challenges(&self) -> &DnsChallenges {
+    pub fn challenges(&self) -> &DnsChallenges {
         &self.challenges
     }
 }

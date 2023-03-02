@@ -5,6 +5,7 @@ version = "0.1.0-beta.2"
 authors = ["Arthur Carcano"]
 description = """Obtain (wildcard) certificates from let's encrypt \
 using dns-01 without the need for API access to your DNS provider."""
+default-run = "agnos"
 readme = "README.md"
 repository = "https://github.com/krtab/agnos"
 license = "MIT"
