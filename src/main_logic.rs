@@ -14,7 +14,10 @@ use crate::barrier::Barrier;
 use crate::config;
 use crate::dns::DnsChallenges;
 
-fn create_restricted_file(path: impl AsRef<std::path::Path>) -> anyhow::Result<tokio::fs::File> {
+pub fn create_restricted_file<T>(path: impl AsRef<std::path::Path>) -> anyhow::Result<T>
+where
+    std::fs::File: Into<T>,
+{
     let mut open_opt = std::fs::OpenOptions::new();
     open_opt.write(true).create(true);
     #[cfg(target_os = "linux")]
@@ -246,7 +249,8 @@ pub async fn process_config_certificate(
         config_cert.fullchain_output_file.display()
     );
     {
-        let mut certificate_file = create_restricted_file(&config_cert.fullchain_output_file)?;
+        let mut certificate_file: tokio::fs::File =
+            create_restricted_file(&config_cert.fullchain_output_file)?;
         for c in cert {
             certificate_file.write_all(&c.to_pem()?).await?;
             certificate_file.write_all(b"\n").await?;
@@ -257,7 +261,8 @@ pub async fn process_config_certificate(
         config_cert.key_output_file.display()
     );
     {
-        let mut private_key_file = create_restricted_file(&config_cert.key_output_file)?;
+        let mut private_key_file: tokio::fs::File =
+            create_restricted_file(&config_cert.key_output_file)?;
         private_key_file.write_all(&pkey_pem).await?;
     }
     Ok(())

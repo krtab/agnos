@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use agnos::config::Config;
+use agnos::{config::Config, main_logic::create_restricted_file};
 use clap::{Arg, ArgAction};
 
 fn main() -> anyhow::Result<()> {
@@ -60,7 +60,8 @@ fn main() -> anyhow::Result<()> {
             std::io::stdout().flush()?;
             let key = openssl::rsa::Rsa::generate(*key_size)?;
             let pem = key.private_key_to_pem()?;
-            std::fs::write(account.private_key_path, &pem)?;
+            let mut key_file: std::fs::File = create_restricted_file(account.private_key_path)?;
+            key_file.write_all(&pem)?;
             println!("Private key generated!")
         }
     }
