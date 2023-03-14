@@ -56,7 +56,7 @@ Agnos leverages let's encrypt capability to follow DNS `NS` records. It requires
 
 1. [Installation](#installation)
     1. [Released binary](#released-binary)
-    1. [AUR package](#aur-package)
+    1. [Archlinux AUR package](#archlinux-aur-package)
     1. [Building](#building)
     1. [Setting capabilities to not run agnos as root](#setting-capabilities-to-not-run-agnos-as-root)
 1. [Usage](#usage)
@@ -77,22 +77,31 @@ This instructions are given for a Linux system but a similar process will likely
 
 ## Released binary
 
-Pre-compiled binaries for (relatively recent) Linux/amd64 are available for every tagged [release](https://github.com/krtab/agnos/releases).
+Pre-compiled binaries for (relatively recent) Linux/amd64 are available for every tagged [release](https://github.com/krtab/agnos/releases). They are known to not work on Debian 11.
 
-## AUR package
+## Archlinux AUR package
 
 Agnos is available in the [AUR](https://aur.archlinux.org/packages/agnos). You can install it using: `yay -S agnos`. 
 
 ## Building
 
-Agnos is written in Rust. To build it you will need to have the rust toolchain installed. 
+Agnos is written in Rust. To build it you will need to have the rust toolchain installed, in a version greater or equal to 1.64.0. On most distributions, this should be done using [rustup](https://rustup.rs). 
 
-Once you have obtained the source, the following command will build the binary and put it in the root directory of the repo.
+Once you have obtained the source, the following command will build the binaries and put them in the root directory of the repo.
 
 ```bash
 cd agnos/
-cargo build --release
-mv target/release/agnos agnos
+make build-release
+```
+
+or more explicitely:
+
+```bash
+cargo build --locked --bins --release
+strip target/release/agnos
+strip target/release/agnos-generate-accounts-keys
+ln target/release/agnos agnos
+ln target/release/agnos-generate-accounts-keys agnos-generate-accounts-keys
 ```
 
 ## Setting capabilities to not run agnos as root
@@ -122,6 +131,10 @@ openssl genrsa 4096 > /path/to/store/the/key.pem
 ```
 
 Alternatively, you can use the provided `agnos-generate-accounts-keys` binary to automatically generate private keys for the accounts listed in the configuration file.
+
+```bash
+agnos-generate-accounts-keys --key-size 4096 your_config.toml
+```
 
 ## Agnos configuration
 
