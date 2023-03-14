@@ -18,6 +18,8 @@ exclude = [
     "aur_package",
     "rustfmt.toml",
     "resources",
+    "deny.toml",
+    ".gitmodules",
     "!resources/Banner-optimized.png",
     "!resources/red-iron.png",
 ]
