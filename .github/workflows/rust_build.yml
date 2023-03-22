@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Prepare
+        run: >
+          sudo apt-get install -y musl musl-tools
       - name: Checkout
         uses: actions/checkout@v1
 
@@ -28,23 +31,24 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          target: x86_64-unknown-linux-musl
           default: true
           override: true
 
       - name: Build
         run: >
-             cargo build --locked --bins --release &&
-             strip target/release/agnos &&
-             strip target/release/agnos-generate-accounts-keys &&
-             mv target/release/agnos target/release/agnos_amd64 &&
-             mv target/release/agnos-generate-accounts-keys target/release/agnos-generate-accounts-keys_amd64
+             cargo build --locked --bins --release --target=x86_64-unknown-linux-musl --features openssl/vendored &&
+             strip target/x86_64-unknown-linux-musl/release/agnos &&
+             strip target/x86_64-unknown-linux-musl/release/agnos-generate-accounts-keys &&
+             mv target/x86_64-unknown-linux-musl/release/agnos target/x86_64-unknown-linux-musl/release/agnos_amd64 &&
+             mv target/x86_64-unknown-linux-musl/release/agnos-generate-accounts-keys target/x86_64-unknown-linux-musl/release/agnos-generate-accounts-keys_amd64
 
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            target/release/agnos_amd64
-            target/release/agnos-generate-accounts-keys_amd64
+            target/x86_64-unknown-linux-musl/release/agnos_amd64
+            target/x86_64-unknown-linux-musl/release/agnos-generate-accounts-keys_amd64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

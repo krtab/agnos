@@ -77,7 +77,7 @@ These instructions are given for a Linux system but a similar process will likel
 
 ## Released binary
 
-Pre-compiled binaries for (relatively recent) Linux/amd64 are available for every tagged [release](https://github.com/krtab/agnos/releases). They are known to not work on Debian 11.
+Pre-compiled binaries for Linux/amd64 are available for every tagged [release](https://github.com/krtab/agnos/releases). Be aware that they are statically built using musl and vendoring their own openssl so that they can easily be installed even on older distributions.
 
 ## Archlinux AUR package
 
