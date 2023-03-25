@@ -29,7 +29,7 @@ categories = ["command-line-utilities"]
 acme2 = "0.5"
 base64 = "0.21.0"
 futures-util = "0.3.18"
-openssl = "0.10.38"
+openssl = "0.10.48"
 reqwest = "0.11.7"
 sha2 = "0.10.6"
 toml = { version = "0.7.2", default-features = false, features = ["parse"] }
