@@ -149,7 +149,7 @@ There are three "levels" in the configuration:
 The general configuration level is where the IP address to listen on is provided.
 
 ```toml
-dns_listen_adr = "1.2.3.4:53"
+dns_listen_addr = "1.2.3.4:53"
 ```
 
 ### 2. Accounts

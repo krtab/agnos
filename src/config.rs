@@ -12,7 +12,9 @@ use std::{net::SocketAddr, path::PathBuf};
 #[serde(deny_unknown_fields)]
 pub struct Config {
     /// One listening address per config
-    pub dns_listen_adr: SocketAddr,
+    // Legacy misspelled alias. TODO: remove in a future version
+    #[serde(alias = "dns_listen_adr")]
+    pub dns_listen_addr: SocketAddr,
     /// Several accounts per config
     pub accounts: Vec<Account>,
 }

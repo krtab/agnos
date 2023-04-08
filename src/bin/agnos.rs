@@ -104,7 +104,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::fs::read_to_string(cli_ops.get_one::<String>("config").unwrap()).await?;
     let config: Config = toml::from_str(&config_file)?;
 
-    let dns_worker = DnsWorker::new(config.dns_listen_adr).await?;
+    let dns_worker = DnsWorker::new(config.dns_listen_addr).await?;
     let dns_handle = dns_worker.challenges();
 
     let acme_url = if cli_ops.get_flag("no-staging") {
