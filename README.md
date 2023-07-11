@@ -85,7 +85,7 @@ Agnos is available in the [AUR](https://aur.archlinux.org/packages/agnos). You c
 
 ## Building
 
-Agnos is written in Rust. To build it you will need to have the rust toolchain installed, in a version greater or equal to 1.64.0. On most distributions, this should be done using [rustup](https://rustup.rs). 
+Agnos is written in Rust. To build it you will need to have the rust toolchain installed, in a version greater or equal to 1.65.0. On most distributions, this should be done using [rustup](https://rustup.rs). 
 
 Once you have obtained the source, the following command will build the binaries and put them in the root directory of the repo.
 
