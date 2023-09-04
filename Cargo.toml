@@ -24,7 +24,7 @@ exclude = [
     "!resources/red-iron.png",
 ]
 categories = ["command-line-utilities"]
-rust = "1.65"
+rust-version = "1.65"
 
 [dependencies]
 acme2 = "0.5"
