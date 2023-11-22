@@ -11,8 +11,10 @@ use std::{net::SocketAddr, path::PathBuf};
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    // Alternative spelling for retro-compatibility
+    #[serde(alias = "dns_listen_adr")]
     /// One listening address per config
-    pub dns_listen_adr: SocketAddr,
+    pub dns_listen_addr: SocketAddr,
     /// Several accounts per config
     pub accounts: Vec<Account>,
 }

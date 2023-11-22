@@ -1,6 +1,8 @@
 # Address for the DNS server to listen on.
 # The port should probably be 53.
-dns_listen_adr = "1.2.3.4:53"
+# Can also be spelled "dns_listen_adr" for
+# retro-compatibility.
+dns_listen_addr = "1.2.3.4:53"
 
 # A first account
 # accounts are identified by
