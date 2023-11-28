@@ -67,6 +67,7 @@ Agnos leverages let's encrypt capability to follow DNS `NS` records. It requires
         1. [Certificates](#certificates)
     1. [Configuration of your DNS provider](#configuration-of-your-dns-provider)
     1. [Running agnos](#running-agnos)
+    1. [Systemd units](#systemd-units)
 1. [Developers](#developers)
 
 <!-- /TOC -->
@@ -219,6 +220,10 @@ _acme-challenge.another.examp.le    NS      agnos-ns.doma.in
 `agnos` takes a single command line argument, the path to its configuration file, and two optional flags: `--no-staging` to use Let's Encrypt production server, and `--debug` to display more debug information. Help is available via `agnos --help`.
 
 When running, it checks whether the certificates of the full chain are going to expire in the next 30 days, and only renew them in that case, so it is suitable to be used in a cron job.
+
+## Systemd units
+
+A systemd unit and timers are provided in the `systemd` folder of this repo.
 
 # Developers
 
