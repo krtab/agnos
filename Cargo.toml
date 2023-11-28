@@ -24,7 +24,7 @@ exclude = [
     "!resources/red-iron.png",
 ]
 categories = ["command-line-utilities"]
-rust-version = "1.65"
+rust-version = "1.67"
 
 [dependencies]
 acme2 = "0.5"
@@ -36,8 +36,8 @@ sha2 = "0.10.6"
 toml = { version = "0.7.2", default-features = false, features = ["parse"] }
 tracing = "0.1.29"
 tracing-error = "0.2.0"
-trust-dns-server = "0.23.0"
-trust-dns-proto = "0.23.0"
+hickory-server = "0.24.0"
+hickory-proto = "0.24.0"
 async-trait = "0.1.57"
 anyhow = "1.0.69"
 

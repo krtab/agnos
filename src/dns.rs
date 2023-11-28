@@ -9,12 +9,12 @@ use std::{
 use async_trait::async_trait;
 
 use tokio::net::{TcpListener, ToSocketAddrs, UdpSocket};
-use trust_dns_proto::{
+use hickory_proto::{
     error::ProtoError,
     op::{Header, MessageType, ResponseCode},
     rr::{rdata::TXT, DNSClass, Name, RData, Record, RecordType},
 };
-use trust_dns_server::{
+use hickory_server::{
     authority::MessageResponseBuilder,
     proto::op::LowerQuery,
     server::{Request, RequestHandler, ResponseHandler, ResponseInfo},
@@ -174,7 +174,7 @@ impl DnsWorker {
     }
 
     /// Run the DNS server
-    pub async fn run(self) -> std::result::Result<(), ProtoError> {
+    pub async fn run(mut self) -> std::result::Result<(), ProtoError> {
         self.serv_future.block_until_done().await
     }
 
