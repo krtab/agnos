@@ -16,7 +16,7 @@ use trust_dns_proto::{
 };
 use trust_dns_server::{
     authority::MessageResponseBuilder,
-    client::op::LowerQuery,
+    proto::op::LowerQuery,
     server::{Request, RequestHandler, ResponseHandler, ResponseInfo},
     ServerFuture,
 };
