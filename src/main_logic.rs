@@ -4,7 +4,7 @@ use futures_util::future::join_all;
 
 use std::{sync::Arc, time::Duration};
 use tracing::{debug_span, instrument, Instrument};
-use trust_dns_proto::rr::Name;
+use hickory_proto::rr::Name;
 
 use anyhow::{anyhow, bail};
 use sha2::Digest;

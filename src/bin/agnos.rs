@@ -86,11 +86,11 @@ async fn main() -> anyhow::Result<()> {
 
     let tracing_filter = std::env::var("RUST_LOG").unwrap_or(if debug_mode {
         format!(
-            "info,{}=debug,trust_dns_server=off",
+            "info,{}=debug,hickory_server=off",
             env!("CARGO_CRATE_NAME")
         )
     } else {
-        "info,trust_dns_server=off".to_owned()
+        "info,hickory_server=off".to_owned()
     });
 
     tracing_subscriber::fmt()
