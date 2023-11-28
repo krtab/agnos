@@ -1,0 +1,17 @@
+[Unit]
+Description=Agnos, obtain ACME/Let's encrypt certificates using DNS-01
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=agnos /etc/agnos/config.toml --no-staging
+
+# Hardening
+ProtectSystem=true
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+NoNewPrivileges=true
+
+# Reload webserver after agnos has run
+# ExecStartPost=systemctl restart nginx
+
