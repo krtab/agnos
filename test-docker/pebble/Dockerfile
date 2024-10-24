@@ -1,4 +1,4 @@
-FROM letsencrypt/pebble:latest
+FROM ghcr.io/letsencrypt/pebble:latest
 
 ENV PEBBLE_VA_NOSLEEP=1
 
