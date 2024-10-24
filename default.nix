@@ -3,16 +3,11 @@
 let
   rustPlatform = pkgs.rustPlatform;
 
-  agnos = rustPlatform.buildRustPackage rec {
+  agnos = rustPlatform.buildRustPackage {
     pname = "agnos";
     version = "0.1.0";
 
-    src = pkgs.fetchFromGitHub {
-      owner = "krtab";
-      repo = "agnos";
-      rev = "v0.1.0-beta.4";
-      sha256 = "sha256-ZEW+OdGliREg8mA0nIn8wt908ASUSa1T1LeC7I78CBU=";
-    };
+    src = lib.cleanSource ./.;
 
     cargoSha256 = "sha256-AYvRbabzGcXZgIe53aAdEZmS7Yag/Kv8eetLw/x/v1Y=";
 
