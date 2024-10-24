@@ -9,19 +9,15 @@ default-run = "agnos"
 readme = "README.md"
 repository = "https://github.com/krtab/agnos"
 license = "MIT"
-exclude = [
-    ".github",
-    "Makefile",
-    ".dockerignore",
-    "config_example.toml",
-    "test-docker",
-    "aur_package",
-    "rustfmt.toml",
-    "resources",
-    "deny.toml",
-    ".gitmodules",
-    "!resources/Banner-optimized.png",
-    "!resources/red-iron.png",
+include = [
+    "Cargo.lock",
+    "Cargo.toml",
+    "LICENSE.txt",
+    "README.md",
+    "resources/Banner-optimized.png",
+    "resources/red-iron.png",
+    "src",
+    "systemd",
 ]
 categories = ["command-line-utilities"]
 rust-version = "1.67"
