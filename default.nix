@@ -7,9 +7,20 @@ let
     pname = "agnos";
     version = "0.1.0";
 
-    src = lib.cleanSource ./.;
+    src = lib.fileset.toSource { root = ./.; fileset = lib.fileset.unions [
+          ./Cargo.lock
+          ./Cargo.toml
+          ./LICENSE.txt
+          ./README.md
+          ./resources/Banner-optimized.png
+          ./resources/red-iron.png
+          ./src
+          ./systemd
+    ]; };
 
-    cargoSha256 = "sha256-AYvRbabzGcXZgIe53aAdEZmS7Yag/Kv8eetLw/x/v1Y=";
+    cargoLock = {
+      lockFile = ./Cargo.lock;
+    };
 
     nativeBuildInputs = [
       pkgs.pkg-config
