@@ -14,5 +14,5 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build the Docker image
+    - name: Run the docker compose test
       run: make compose
