@@ -8,21 +8,6 @@ services:
       acmenet:
         ipv4_address: 10.20.0.4
 
-  # bind9:
-  #   image: bind9
-  #   tty: true
-  #   expose:
-  #     - 53/tcp
-  #     - 53/udp
-  #     - 953/tcp
-  #   ports:
-  #     - 5353:53/tcp
-  #     - 5353:53/udp
-  #   # command: sleep 3600
-  #   networks:
-  #     acmenet:
-  #       ipv4_address: 10.20.0.2
-
   agnos:
     image: agnos
     networks:
