@@ -1,4 +1,0 @@
-zone "agnos.test" {
-    type master;
-    file "/etc/bind/zones/agnos.test.zone";
-};
