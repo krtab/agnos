@@ -57,6 +57,7 @@ Agnos leverages let's encrypt capability to follow DNS `NS` records. It requires
 1. [Installation](#installation)
     1. [Released binary](#released-binary)
     1. [Archlinux AUR package](#archlinux-aur-package)
+    1. [Packaging on other systems](#packaging-on-other-systems)
     1. [Building](#building)
     1. [Setting capabilities to not run agnos as root](#setting-capabilities-to-not-run-agnos-as-root)
 1. [Usage](#usage)
@@ -70,6 +71,7 @@ Agnos leverages let's encrypt capability to follow DNS `NS` records. It requires
     1. [Systemd units](#systemd-units)
 1. [Developers](#developers)
     1. [Integration testing](#integration-testing)
+1. [User feedback requested](#user-feedback-requested)
 
 <!-- /TOC -->
 
@@ -84,6 +86,10 @@ Pre-compiled binaries for Linux/amd64 are available for every tagged [release](h
 ## Archlinux AUR package
 
 Agnos is available in the [AUR](https://aur.archlinux.org/packages/agnos). You can install it using: `yay -S agnos`. 
+
+## Packaging on other systems
+
+If you have packaged agnos for another system, feel free to open a PR to add it to the list.
 
 ## Building
 
@@ -234,4 +240,9 @@ Build using usual `cargo` commands.
 
 ## Integration testing
 
-Integration testing is done using nix-shell. Launch it with `nix-shell integration-testing/shell.nix --pure --run agnos-test-script`
+Integration testing is done using nix-shell. Launch it with `nix-shell integration-testing/shell.nix --pure --run agnos-test-script`.
+
+# User feedback requested
+
+If you are using agnos, please consider telling me about your user experience here: https://github.com/krtab/agnos/issues/62.
+
