@@ -69,6 +69,7 @@ Agnos leverages let's encrypt capability to follow DNS `NS` records. It requires
     1. [Running agnos](#running-agnos)
     1. [Systemd units](#systemd-units)
 1. [Developers](#developers)
+    1. [Integration testing](#integration-testing)
 
 <!-- /TOC -->
 
@@ -231,4 +232,6 @@ PRs and issues are very welcome.
 
 Build using usual `cargo` commands.
 
-The Makefile is for integration testing in a docker-compose. At the root, run `sudo make compose` (sudo is required to use docker) to test agnos using pebble.
+## Integration testing
+
+Integration testing is done using nix-shell. Launch it with `nix-shell integration-testing/shell.nix --pure --run agnos-test-script`
