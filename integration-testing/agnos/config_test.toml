@@ -1,6 +1,5 @@
 # Address for the DNS server to listen on.
-# The port should probably be 53.
-dns_listen_addr = "0.0.0.0:53"
+dns_listen_addr = "0.0.0.0:8053"
 
 # A first account
 # accounts are identified by
