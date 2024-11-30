@@ -32,7 +32,13 @@ pub struct Account {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Certificate {
+    #[serde(default = "default_days")]
+    pub renewal_days_advance: u32,
     pub domains: Vec<String>,
     pub fullchain_output_file: PathBuf,
     pub key_output_file: PathBuf,
+}
+
+const fn default_days() -> u32 {
+    30
 }

@@ -181,9 +181,11 @@ In the configuration file, `accounts.certificates` is a TOML [array of tables](h
 domains =  ["doma.in","*.doma.in"]
 fullchain_output_file = "fullchain_A.pem"
 key_output_file = "cert_key_A.pem"
+renewal_days_advance = 30 # Renew certificate 30 days in advance of its expiration (this is the default value and can be omitted).
 
 # A second certificate ordered for that account.
 [[accounts.certificates]]
+renewal_days_advance = 21 # Renew certificate 21 days in advance of its expiration.
 domains =  ["examp.le","another.examp.le","and.a.completely.different.one"]
 fullchain_output_file = "fullchain_B.pem"
 key_output_file = "cert_key_B.pem"
@@ -226,7 +228,7 @@ _acme-challenge.another.examp.le    NS      agnos-ns.doma.in
 
 `agnos` takes a single command line argument, the path to its configuration file, and two optional flags: `--no-staging` to use Let's Encrypt production server, and `--debug` to display more debug information. Help is available via `agnos --help`.
 
-When running, it checks whether the certificates of the full chain are going to expire in the next 30 days, and only renew them in that case, so it is suitable to be used in a cron job.
+When running, it checks whether the certificates of the full chain are going to expire in the next 30 days (by default), and only renew them in that case, so it is suitable to be used in a cron job.
 
 ## Systemd units
 
