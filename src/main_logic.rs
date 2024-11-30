@@ -131,7 +131,8 @@ pub async fn process_config_certificate(
             tracing::info!("Certificate chain found on disk, checking its validity");
             let current_certs = openssl::x509::X509::stack_from_pem(&f)?;
             let mut need_renewal = false;
-            let today_plus_validity = openssl::asn1::Asn1Time::days_from_now(30)?;
+            let days = config_cert.renewal_days_advance;
+            let today_plus_validity = openssl::asn1::Asn1Time::days_from_now(days)?;
             for c in current_certs {
                 let end = c.not_after();
                 let to_renew = end < today_plus_validity;
@@ -148,7 +149,8 @@ pub async fn process_config_certificate(
                 return Ok(());
             } else {
                 tracing::info!(
-                    "A certificate in the chain expires in 30 days or less, renewing it."
+                    "A certificate in the chain expires in {d} days or less, renewing it.",
+                    d = days
                 )
             }
         }
