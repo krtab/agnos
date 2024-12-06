@@ -2,9 +2,11 @@ use base64::Engine;
 
 use futures_util::future::join_all;
 
+use hickory_proto::rr::Name;
+use std::io;
+use std::path::Path;
 use std::{sync::Arc, time::Duration};
 use tracing::{debug_span, instrument, Instrument};
-use hickory_proto::rr::Name;
 
 use anyhow::{anyhow, bail};
 use sha2::Digest;
@@ -27,6 +29,14 @@ where
     }
     let std_file = open_opt.open(path)?;
     Ok(std_file.into())
+}
+
+async fn try_load(path: impl AsRef<Path>) -> anyhow::Result<Option<Vec<u8>>> {
+    match tokio::fs::read(path.as_ref()).await {
+        Ok(buf) => Ok(Some(buf)),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(e) => return Err(e.into()),
+    }
 }
 
 /// From RFC 8555:
@@ -68,16 +78,16 @@ pub async fn process_config_account(
 ) -> anyhow::Result<()> {
     tracing::info!("Processing account {}", &config_account.email);
     let priv_key = {
-        if !config_account.private_key_path.exists() {
-            bail!(
+        let buf = try_load(&config_account.private_key_path).await?;
+        match buf {
+            None => bail!(
                 "Private key for account <{}>, expected to be located at {} does not exist. \
                 Consider generating it with agnos-generate-accounts-keys.",
                 config_account.email,
                 config_account.private_key_path.display()
-            )
+            ),
+            Some(buf) => openssl::pkey::PKey::private_key_from_pem(&buf)?,
         }
-        let buf = tokio::fs::read(&config_account.private_key_path).await?;
-        openssl::pkey::PKey::private_key_from_pem(&buf)?
     };
     let account = acme2::AccountBuilder::new(acme_dir.clone())
         .contact(vec![format!("mailto:{}", config_account.email)])
@@ -118,18 +128,15 @@ pub async fn process_config_certificate(
         "Processing certificate {}",
         &config_cert.fullchain_output_file.display()
     );
-    match tokio::fs::read(&config_cert.fullchain_output_file).await {
-        Err(e) => match e.kind() {
-            std::io::ErrorKind::NotFound => {
-                tracing::info!("Certificate not found on disk, continuing...")
-            }
-            _ => {
-                anyhow::bail!(e)
-            }
-        },
-        Ok(f) => {
+    let cert_chain = try_load(&config_cert.fullchain_output_file).await?;
+    let go_on = match cert_chain {
+        None => {
+            tracing::info!("Certificate not found on disk, continuing...");
+            true
+        }
+        Some(chain) => {
             tracing::info!("Certificate chain found on disk, checking its validity");
-            let current_certs = openssl::x509::X509::stack_from_pem(&f)?;
+            let current_certs = openssl::x509::X509::stack_from_pem(&chain)?;
             let mut need_renewal = false;
             let days = config_cert.renewal_days_advance;
             let today_plus_validity = openssl::asn1::Asn1Time::days_from_now(days)?;
@@ -142,20 +149,26 @@ pub async fn process_config_certificate(
                     end,
                     to_renew
                 );
-                need_renewal |= to_renew;
+                if to_renew {
+                    need_renewal = true;
+                    break;
+                }
             }
             if !need_renewal {
                 tracing::info!("No certificate in the chain requires renewal.");
-                return Ok(());
+                false
             } else {
                 tracing::info!(
                     "A certificate in the chain expires in {d} days or less, renewing it.",
                     d = days
-                )
+                );
+                true
             }
         }
     };
-
+    if !go_on {
+        return Ok(());
+    }
     tracing::debug!("Building order...");
     let mut order = acme2::OrderBuilder::new(account);
     for domain in config_cert.domains {
@@ -168,58 +181,54 @@ pub async fn process_config_certificate(
 
     tracing::info!("Processing authorizations");
     let n_auth_total = authorizations.len();
-    let barriers = vec![barrier; n_auth_total];
-    let authorizations_fut =
-        authorizations
-            .into_iter()
-            .enumerate()
-            .zip(barriers)
-            .map(|((n_auth, auth), barrier)| {
-                let handle = handle.clone();
-                let span =
-                    debug_span!("",domain = %auth.identifier.value, wildcard = auth.wildcard);
-                async move {
-                    tracing::debug!("Processing authorization {}/{}", n_auth + 1, n_auth_total);
-                    let challenge = auth.get_challenge("dns-01").unwrap();
-                    let key = challenge
-                        .key_authorization()?
-                        .ok_or_else(|| anyhow!("Challenge's key was None"))?;
-                    let txt_value = key_auth_to_dns_txt(&key);
-                    tracing::debug!("TXT value: {}", txt_value);
-                    // TODO: to check when clarifying FQDNs.
-                    let domain_validated: Name = format!("{}.", &auth.identifier.value).parse()?;
-                    tracing::info!(
-                        "Adding challenge {} to dns zone for domain '{}'.",
-                        &txt_value,
-                        &domain_validated
-                    );
-                    handle.add_token(domain_validated, txt_value);
-                    barrier.wait().await;
-                    tracing::debug!("Requesting challenge validation from acme server.");
-                    let challenge = challenge.validate().await?;
-                    let challenge = challenge.wait_done(Duration::from_secs(5), 30).await?;
-                    if !matches!(challenge.status, acme2::ChallengeStatus::Valid) {
-                        bail!(
-                            "Challenge status is not valid, challenge status is: {:?}",
-                            challenge.status
-                        )
-                    }
-                    tracing::debug!("Requesting authorization validation from acme server.");
-                    let authorization = auth.wait_done(Duration::from_secs(5), 10).await?;
-                    if !matches!(authorization.status, acme2::AuthorizationStatus::Valid) {
-                        bail!(
-                            "Authorization status is not valid, authorization status is: {:?}",
-                            authorization.status
-                        )
-                    }
-                    Ok(())
+    let authorizations_fut = join_all(authorizations.into_iter().enumerate().map(
+        |(n_auth, auth)| {
+            let handle = handle.clone();
+            let barrier = barrier.clone();
+            let span = debug_span!("",domain = %auth.identifier.value, wildcard = auth.wildcard);
+            async move {
+                tracing::debug!("Processing authorization {}/{}", n_auth + 1, n_auth_total);
+                let challenge = auth.get_challenge("dns-01").unwrap();
+                let key = challenge
+                    .key_authorization()?
+                    .ok_or_else(|| anyhow!("Challenge's key was None"))?;
+                let txt_value = key_auth_to_dns_txt(&key);
+                tracing::debug!("TXT value: {}", txt_value);
+                // TODO: to check when clarifying FQDNs.
+                let domain_validated: Name = format!("{}.", &auth.identifier.value).parse()?;
+                tracing::info!(
+                    "Adding challenge {} to dns zone for domain '{}'.",
+                    &txt_value,
+                    &domain_validated
+                );
+                handle.add_token(domain_validated, txt_value);
+                barrier.wait().await;
+                tracing::debug!("Requesting challenge validation from acme server.");
+                let challenge = challenge.validate().await?;
+                let challenge = challenge.wait_done(Duration::from_secs(5), 30).await?;
+                if !matches!(challenge.status, acme2::ChallengeStatus::Valid) {
+                    bail!(
+                        "Challenge status is not valid, challenge status is: {:?}",
+                        challenge.status
+                    )
                 }
-                .instrument(span)
-            });
-    let authorization_res: anyhow::Result<Vec<_>> =
-        join_all(authorizations_fut).await.into_iter().collect();
-    authorization_res?;
-
+                tracing::debug!("Requesting authorization validation from acme server.");
+                let authorization = auth.wait_done(Duration::from_secs(5), 10).await?;
+                if !matches!(authorization.status, acme2::AuthorizationStatus::Valid) {
+                    bail!(
+                        "Authorization status is not valid, authorization status is: {:?}",
+                        authorization.status
+                    )
+                }
+                Ok(())
+            }
+            .instrument(span)
+        },
+    ));
+    drop(barrier);
+    for res in authorizations_fut.await {
+        res?
+    }
     tracing::info!("Waiting for order to be ready on ACME server.");
     let order = order.wait_ready(Duration::from_secs(5), 3).await?;
     if !matches!(order.status, acme2::OrderStatus::Ready) {
