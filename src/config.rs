@@ -37,6 +37,8 @@ pub struct Certificate {
     pub domains: Vec<String>,
     pub fullchain_output_file: PathBuf,
     pub key_output_file: PathBuf,
+    #[serde(default)]
+    pub reuse_private_key: bool,
 }
 
 const fn default_days() -> u32 {

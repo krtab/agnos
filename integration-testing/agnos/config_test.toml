@@ -13,12 +13,14 @@ private_key_path = "priv_key_1.pem"
 domains =  ["a.agnos.test"]
 fullchain_output_file = "fullchain_A.pem"
 key_output_file = "cert_key_A.pem"
+reuse_private_key = false
 
 # A second certificate ordered for that account.
 [[accounts.certificates]]
 domains =  ["b.agnos.test","*.b.agnos.test"]
 fullchain_output_file = "fullchain_B.pem"
 key_output_file = "cert_key_B.pem"
+reuse_private_key = true
 
 # A second account
 [[accounts]]
