@@ -3,6 +3,7 @@ use base64::Engine;
 use futures_util::future::join_all;
 
 use hickory_proto::rr::Name;
+use openssl::pkey::PKey;
 use std::io;
 use std::path::Path;
 use std::{sync::Arc, time::Duration};
@@ -237,8 +238,32 @@ pub async fn process_config_certificate(
             order.status
         )
     }
-    let pkey = acme2::gen_ec_p256_private_key()?;
-    let pkey_pem = pkey.private_key_to_pem_pkcs8()?;
+
+    let (pkey, pkey_pem, loaded_pkey) = {
+        let existing_pkey_pem = if config_cert.reuse_private_key {
+            let loaded = try_load(&config_cert.key_output_file).await?;
+            if loaded.is_none() {
+                tracing::info!(
+                    "Couldn't load certificate private key at {}, generating one.",
+                    config_cert.key_output_file.display()
+                )
+            }
+            loaded
+        } else {
+            None
+        };
+        match existing_pkey_pem {
+            Some(pkey_pem) => {
+                let pkey = PKey::private_key_from_pem(&pkey_pem)?;
+                (pkey, pkey_pem, true)
+            }
+            None => {
+                let pkey = acme2::gen_ec_p256_private_key()?;
+                let pem = pkey.private_key_to_pem_pkcs8()?;
+                (pkey, pem, false)
+            }
+        }
+    };
     let order = order.finalize(acme2::Csr::Automatic(pkey)).await?;
     tracing::info!("Waiting for certificate signature by the ACME server.");
     let order = order.wait_done(Duration::from_secs(5), 3).await?;
@@ -267,14 +292,16 @@ pub async fn process_config_certificate(
             certificate_file.write_all(b"\n").await?;
         }
     }
-    tracing::info!(
-        "Writting certificate key to file {}.",
-        config_cert.key_output_file.display()
-    );
-    {
-        let mut private_key_file: tokio::fs::File =
-            create_restricted_file(&config_cert.key_output_file)?;
-        private_key_file.write_all(&pkey_pem).await?;
+    if !loaded_pkey {
+        tracing::info!(
+            "Writting certificate key to file {}.",
+            config_cert.key_output_file.display()
+        );
+        {
+            let mut private_key_file: tokio::fs::File =
+                create_restricted_file(&config_cert.key_output_file)?;
+            private_key_file.write_all(&pkey_pem).await?;
+        }
     }
     Ok(())
 }

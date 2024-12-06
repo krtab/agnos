@@ -34,6 +34,8 @@ let
     $OLDWORKDIR/$CARGO_TARGET_DIR/release/agnos-generate-accounts-keys --key-size 2048 --no-confirm ${agnos_config}
     bash ${wait_for_it} -t 0 127.0.0.1:14000
     $OLDWORKDIR/$CARGO_TARGET_DIR/release/agnos --debug --acme-url https://127.0.0.1:14000/dir --acme-serv-ca ${pebble_cert} ${agnos_config}
+    # Purposefully duplicated to test renewal
+    $OLDWORKDIR/$CARGO_TARGET_DIR/release/agnos --debug --acme-url https://127.0.0.1:14000/dir --acme-serv-ca ${pebble_cert} ${agnos_config}
     cd $OLDWORKDIR
     rm -rf $WORKDIR
   '';

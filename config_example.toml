@@ -24,6 +24,9 @@ fullchain_output_file = "fullchain_B.pem"
 key_output_file = "cert_key_B.pem"
 # Renew certificate 21 days in advance of its expiration (defaults to 30 if omitted).
 renewal_days_advance = 21 
+# Re-use the existing private key.
+# If no key is present at `key_output_file`, a new one will be generated. 
+reuse_private_key = true
 
 # A second account
 [[accounts]]
