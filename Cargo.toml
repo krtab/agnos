@@ -26,7 +26,7 @@ rust-version = "1.67"
 acme2 = "0.5"
 base64 = "0.21.0"
 futures-util = "0.3.31"
-openssl = "0.10.66"
+openssl = "0.10.70"
 reqwest = "0.11.7"
 sha2 = "0.10.6"
 toml = { version = "0.7.2", default-features = false, features = ["parse"] }
