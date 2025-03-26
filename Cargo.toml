@@ -20,20 +20,21 @@ include = [
     "systemd",
 ]
 categories = ["command-line-utilities"]
-rust-version = "1.67"
+rust-version = "1.70"
 
 [dependencies]
 acme2 = "0.5"
 base64 = "0.21.0"
 futures-util = "0.3.31"
 openssl = "0.10.70"
+# Currently cannot be upgraded because acme2 uses version 12
 reqwest = "0.11.7"
 sha2 = "0.10.6"
 toml = { version = "0.7.2", default-features = false, features = ["parse"] }
 tracing = "0.1.29"
 tracing-error = "0.2.0"
-hickory-server = "0.24.0"
-hickory-proto = "0.24.0"
+hickory-server = "0.25.0"
+hickory-proto = "0.25.0"
 async-trait = "0.1.57"
 anyhow = "1.0.69"
 

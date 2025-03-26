@@ -10,9 +10,8 @@ use async_trait::async_trait;
 
 use tokio::net::{TcpListener, ToSocketAddrs, UdpSocket};
 use hickory_proto::{
-    error::ProtoError,
     op::{Header, MessageType, ResponseCode},
-    rr::{rdata::TXT, DNSClass, Name, RData, Record, RecordType},
+    rr::{rdata::TXT, DNSClass, Name, RData, Record, RecordType}, ProtoError,
 };
 use hickory_server::{
     authority::MessageResponseBuilder,
@@ -79,7 +78,10 @@ impl RequestHandler for DnsRequestHandler {
         mut response_handle: R,
     ) -> ResponseInfo {
         let req_message = request.deref();
-        let queries = req_message.query();
+        let queries = match req_message.queries() {
+            [q] => q,
+            _ => unimplemented!("Agnos does not support yet DNS messages with zero or more than one query.")
+        };
         // this is only to allow for early None return
         // Could be replaced with a labeled block since
         // Rust 1.65
