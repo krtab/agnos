@@ -85,10 +85,7 @@ async fn main() -> anyhow::Result<()> {
     let debug_mode = cli_ops.get_flag("debug");
 
     let tracing_filter = std::env::var("RUST_LOG").unwrap_or(if debug_mode {
-        format!(
-            "info,{}=debug,hickory_server=off",
-            env!("CARGO_CRATE_NAME")
-        )
+        format!("info,{}=debug,hickory_server=off", env!("CARGO_CRATE_NAME"))
     } else {
         "info,hickory_server=off".to_owned()
     });
