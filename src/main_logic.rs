@@ -21,6 +21,10 @@ pub fn create_restricted_file<T>(path: impl AsRef<std::path::Path>) -> anyhow::R
 where
     std::fs::File: Into<T>,
 {
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
     let mut open_opt = std::fs::OpenOptions::new();
     open_opt.write(true).create(true);
     #[cfg(target_os = "linux")]
