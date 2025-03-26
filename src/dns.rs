@@ -8,10 +8,10 @@ use std::{
 
 use async_trait::async_trait;
 
-use tokio::net::{TcpListener, ToSocketAddrs, UdpSocket};
 use hickory_proto::{
     op::{Header, MessageType, ResponseCode},
-    rr::{rdata::TXT, DNSClass, Name, RData, Record, RecordType}, ProtoError,
+    rr::{rdata::TXT, DNSClass, Name, RData, Record, RecordType},
+    ProtoError,
 };
 use hickory_server::{
     authority::MessageResponseBuilder,
@@ -19,6 +19,7 @@ use hickory_server::{
     server::{Request, RequestHandler, ResponseHandler, ResponseInfo},
     ServerFuture,
 };
+use tokio::net::{TcpListener, ToSocketAddrs, UdpSocket};
 
 /// The struct representing the DNS challenges that will be passed around.
 ///
@@ -80,7 +81,9 @@ impl RequestHandler for DnsRequestHandler {
         let req_message = request.deref();
         let queries = match req_message.queries() {
             [q] => q,
-            _ => unimplemented!("Agnos does not support yet DNS messages with zero or more than one query.")
+            _ => unimplemented!(
+                "Agnos does not support yet DNS messages with zero or more than one query."
+            ),
         };
         // this is only to allow for early None return
         // Could be replaced with a labeled block since
