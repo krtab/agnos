@@ -37,8 +37,6 @@ jobs:
       - name: Build
         run: >
              cargo build --locked --bins --release --target=x86_64-unknown-linux-musl --features openssl/vendored &&
-             strip target/x86_64-unknown-linux-musl/release/agnos &&
-             strip target/x86_64-unknown-linux-musl/release/agnos-generate-accounts-keys &&
              mv target/x86_64-unknown-linux-musl/release/agnos target/x86_64-unknown-linux-musl/release/agnos_amd64 &&
              mv target/x86_64-unknown-linux-musl/release/agnos-generate-accounts-keys target/x86_64-unknown-linux-musl/release/agnos-generate-accounts-keys_amd64
 
