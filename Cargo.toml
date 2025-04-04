@@ -26,7 +26,7 @@ rust-version = "1.70"
 acme2 = "0.5"
 base64 = "0.21.0"
 futures-util = "0.3.31"
-openssl = "0.10.70"
+openssl = "0.10.72"
 # Currently cannot be upgraded because acme2 uses version 12
 reqwest = "0.11.7"
 sha2 = "0.10.6"
