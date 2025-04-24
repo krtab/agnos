@@ -55,3 +55,7 @@ version = "4.0.2"
 features = ["cargo"]
 
 [features]
+
+[profile.release]
+strip = true
+lto = true
