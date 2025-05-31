@@ -69,6 +69,7 @@ Agnos leverages let's encrypt capability to follow DNS `NS` records. It requires
     1. [Configuration of your DNS provider](#configuration-of-your-dns-provider)
     1. [Running agnos](#running-agnos)
     1. [Systemd units](#systemd-units)
+    1. [Docker Compose](#docker-compose)
 1. [Developers](#developers)
     1. [Integration testing](#integration-testing)
 1. [User feedback requested](#user-feedback-requested)
@@ -239,6 +240,10 @@ When running, it checks whether the certificates of the full chain are going to 
 ## Systemd units
 
 A systemd unit and timers are provided in the `systemd` folder of this repo.
+
+## Docker Compose
+
+An example Docker Compose configuration is provided at the root of this repo.
 
 # Developers
 
