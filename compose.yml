@@ -1,0 +1,17 @@
+services:
+  agnos:
+    build: .
+    container_name: agnos
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+    volumes:
+      - /etc/agnos:/etc/agnos:rw
+    command:
+      - sh
+      - -c
+      - >
+        agnos-generate-accounts-keys --key-size 4096 --no-confirm /etc/agnos/config.toml
+        && agnos --no-staging /etc/agnos/config.toml
+        && echo 'Retrying in one hour...'
+        && sleep 3600
