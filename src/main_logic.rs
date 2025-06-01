@@ -4,6 +4,7 @@ use futures_util::future::join_all;
 
 use hickory_proto::rr::Name;
 use openssl::pkey::PKey;
+use std::collections::HashSet;
 use std::io;
 use std::path::Path;
 use std::{sync::Arc, time::Duration};
@@ -145,7 +146,20 @@ pub async fn process_config_certificate(
             let mut need_renewal = false;
             let days = config_cert.renewal_days_advance;
             let today_plus_validity = openssl::asn1::Asn1Time::days_from_now(days)?;
+            let mut missing_certs: HashSet<String> = config_cert.domains.iter().cloned().collect();
             for c in current_certs {
+                for entry in c.subject_name().entries() {
+                    if let Ok(name) = entry.data().as_utf8() {
+                        missing_certs.remove(AsRef::<str>::as_ref(&name));
+                    }
+                }
+                if let Some(alt_names) = c.subject_alt_names() {
+                    for entry in alt_names {
+                        if let Some(name) = entry.dnsname() {
+                            missing_certs.remove(name);
+                        }
+                    }
+                }
                 let end = c.not_after();
                 let to_renew = end < today_plus_validity;
                 tracing::debug!(
@@ -159,15 +173,21 @@ pub async fn process_config_certificate(
                     break;
                 }
             }
-            if !need_renewal {
-                tracing::info!("No certificate in the chain requires renewal.");
-                false
-            } else {
+            if !missing_certs.is_empty() {
+                tracing::info!(
+                    "Updating certificates for domains missing from the chain: {:?}",
+                    missing_certs
+                );
+                true
+            } else if need_renewal {
                 tracing::info!(
                     "A certificate in the chain expires in {d} days or less, renewing it.",
                     d = days
                 );
                 true
+            } else {
+                tracing::info!("No certificate in the chain requires renewal.");
+                false
             }
         }
     };
@@ -285,7 +305,7 @@ pub async fn process_config_certificate(
     assert!(cert.len() > 1);
 
     tracing::info!(
-        "Writting certificate to file {}.",
+        "Writing certificate to file {}.",
         config_cert.fullchain_output_file.display()
     );
     {
@@ -298,7 +318,7 @@ pub async fn process_config_certificate(
     }
     if !loaded_pkey {
         tracing::info!(
-            "Writting certificate key to file {}.",
+            "Writing certificate key to file {}.",
             config_cert.key_output_file.display()
         );
         {
