@@ -4,9 +4,9 @@ use futures_util::future::join_all;
 
 use hickory_proto::rr::Name;
 use openssl::pkey::PKey;
-use std::collections::HashSet;
+use std::collections::HashMap;
+use std::fmt::Display;
 use std::io;
-use std::ops::Deref;
 use std::path::Path;
 use std::{sync::Arc, time::Duration};
 use tracing::{debug_span, instrument, Instrument};
@@ -116,6 +116,34 @@ pub async fn process_config_account(
     Ok(())
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum DomainPresent {
+    InConf,
+    InChain,
+    InBoth,
+}
+
+impl Display for DomainPresent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use DomainPresent::*;
+        let s = match self {
+            InConf => "conf",
+            InChain => "chain",
+            InBoth => "both",
+        };
+        f.write_str(s)
+    }
+}
+
+impl DomainPresent {
+    fn mark_in_chain(&mut self) {
+        use DomainPresent::*;
+        if *self == InConf {
+            *self = InBoth
+        }
+    }
+}
+
 async fn chain_is_fresh(config_cert: &config::Certificate) -> anyhow::Result<bool> {
     let cert_chain = try_load(&config_cert.fullchain_output_file).await?;
     Ok(match cert_chain {
@@ -129,21 +157,27 @@ async fn chain_is_fresh(config_cert: &config::Certificate) -> anyhow::Result<boo
             let mut need_renewal = false;
             let days = config_cert.renewal_days_advance;
             let today_plus_validity = openssl::asn1::Asn1Time::days_from_now(days)?;
-            let mut missing_certs: HashSet<&str> =
-                config_cert.domains.iter().map(Deref::deref).collect();
+            let mut missing_certs: HashMap<String, DomainPresent> = config_cert
+                .domains
+                .iter()
+                .map(|dom| (dom.clone(), DomainPresent::InConf))
+                .collect();
+            let mut mark_in_chain = |s: &str| {
+                missing_certs
+                    .entry(s.to_owned())
+                    .and_modify(|val| val.mark_in_chain())
+                    .or_insert(DomainPresent::InChain);
+            };
             for cert in chain {
-                for entry in cert.subject_name().entries() {
-                    if let Ok(name) = entry.data().as_utf8() {
-                        missing_certs.remove(&name[..]);
-                    }
-                }
-                if let Some(alt_names) = cert.subject_alt_names() {
-                    for entry in alt_names {
-                        if let Some(name) = entry.dnsname() {
-                            missing_certs.remove(name);
-                        }
-                    }
-                }
+                cert.subject_name()
+                    .entries()
+                    .flat_map(|ent| ent.data().as_utf8().ok())
+                    .for_each(|entry| mark_in_chain(entry.as_ref()));
+                cert.subject_alt_names()
+                    .into_iter()
+                    .flatten()
+                    .for_each(|name| name.dnsname().into_iter().for_each(&mut mark_in_chain));
+
                 let end = cert.not_after();
                 let to_renew = end < today_plus_validity;
                 tracing::debug!(
@@ -157,10 +191,12 @@ async fn chain_is_fresh(config_cert: &config::Certificate) -> anyhow::Result<boo
                     break;
                 }
             }
-            if !missing_certs.is_empty() {
+            if let Some((domain_name, present_in)) = missing_certs
+                .iter()
+                .find(|(_, &present_in)| present_in != DomainPresent::InBoth)
+            {
                 tracing::info!(
-                    "Updating certificates for domains missing from the chain: {:?}",
-                    missing_certs
+                    "Domain {domain_name} is only present in {present_in}, updating certificate."
                 );
                 false
             } else if need_renewal {
