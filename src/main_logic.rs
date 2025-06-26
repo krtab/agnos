@@ -6,6 +6,7 @@ use hickory_proto::rr::Name;
 use openssl::pkey::PKey;
 use std::collections::HashSet;
 use std::io;
+use std::ops::Deref;
 use std::path::Path;
 use std::{sync::Arc, time::Duration};
 use tracing::{debug_span, instrument, Instrument};
@@ -146,11 +147,12 @@ pub async fn process_config_certificate(
             let mut need_renewal = false;
             let days = config_cert.renewal_days_advance;
             let today_plus_validity = openssl::asn1::Asn1Time::days_from_now(days)?;
-            let mut missing_certs: HashSet<String> = config_cert.domains.iter().cloned().collect();
+            let mut missing_certs: HashSet<&str> =
+                config_cert.domains.iter().map(Deref::deref).collect();
             for c in current_certs {
                 for entry in c.subject_name().entries() {
                     if let Ok(name) = entry.data().as_utf8() {
-                        missing_certs.remove(AsRef::<str>::as_ref(&name));
+                        missing_certs.remove(&name[..]);
                     }
                 }
                 if let Some(alt_names) = c.subject_alt_names() {
