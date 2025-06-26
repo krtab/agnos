@@ -116,6 +116,67 @@ pub async fn process_config_account(
     Ok(())
 }
 
+async fn chain_is_fresh(config_cert: &config::Certificate) -> anyhow::Result<bool> {
+    let cert_chain = try_load(&config_cert.fullchain_output_file).await?;
+    Ok(match cert_chain {
+        None => {
+            tracing::info!("Certificate not found on disk, continuing...");
+            false
+        }
+        Some(chain) => {
+            tracing::info!("Certificate chain found on disk, checking its validity");
+            let chain = openssl::x509::X509::stack_from_pem(&chain)?;
+            let mut need_renewal = false;
+            let days = config_cert.renewal_days_advance;
+            let today_plus_validity = openssl::asn1::Asn1Time::days_from_now(days)?;
+            let mut missing_certs: HashSet<&str> =
+                config_cert.domains.iter().map(Deref::deref).collect();
+            for cert in chain {
+                for entry in cert.subject_name().entries() {
+                    if let Ok(name) = entry.data().as_utf8() {
+                        missing_certs.remove(&name[..]);
+                    }
+                }
+                if let Some(alt_names) = cert.subject_alt_names() {
+                    for entry in alt_names {
+                        if let Some(name) = entry.dnsname() {
+                            missing_certs.remove(name);
+                        }
+                    }
+                }
+                let end = cert.not_after();
+                let to_renew = end < today_plus_validity;
+                tracing::debug!(
+                    "Found certificate for {:?} ending: {}. Need renewal: {}",
+                    cert.subject_name(),
+                    end,
+                    to_renew
+                );
+                if to_renew {
+                    need_renewal = true;
+                    break;
+                }
+            }
+            if !missing_certs.is_empty() {
+                tracing::info!(
+                    "Updating certificates for domains missing from the chain: {:?}",
+                    missing_certs
+                );
+                false
+            } else if need_renewal {
+                tracing::info!(
+                    "A certificate in the chain expires in {d} days or less, renewing it.",
+                    d = days
+                );
+                false
+            } else {
+                tracing::info!("No certificate in the chain requires renewal.");
+                true
+            }
+        }
+    })
+}
+
 /// Entry point at the [`config::Certificate`] level.
 ///
 /// # Arguments
@@ -135,64 +196,7 @@ pub async fn process_config_certificate(
         "Processing certificate {}",
         &config_cert.fullchain_output_file.display()
     );
-    let cert_chain = try_load(&config_cert.fullchain_output_file).await?;
-    let go_on = match cert_chain {
-        None => {
-            tracing::info!("Certificate not found on disk, continuing...");
-            true
-        }
-        Some(chain) => {
-            tracing::info!("Certificate chain found on disk, checking its validity");
-            let current_certs = openssl::x509::X509::stack_from_pem(&chain)?;
-            let mut need_renewal = false;
-            let days = config_cert.renewal_days_advance;
-            let today_plus_validity = openssl::asn1::Asn1Time::days_from_now(days)?;
-            let mut missing_certs: HashSet<&str> =
-                config_cert.domains.iter().map(Deref::deref).collect();
-            for c in current_certs {
-                for entry in c.subject_name().entries() {
-                    if let Ok(name) = entry.data().as_utf8() {
-                        missing_certs.remove(&name[..]);
-                    }
-                }
-                if let Some(alt_names) = c.subject_alt_names() {
-                    for entry in alt_names {
-                        if let Some(name) = entry.dnsname() {
-                            missing_certs.remove(name);
-                        }
-                    }
-                }
-                let end = c.not_after();
-                let to_renew = end < today_plus_validity;
-                tracing::debug!(
-                    "Found certificate for {:?} ending: {}. Need renewal: {}",
-                    c.subject_name(),
-                    end,
-                    to_renew
-                );
-                if to_renew {
-                    need_renewal = true;
-                    break;
-                }
-            }
-            if !missing_certs.is_empty() {
-                tracing::info!(
-                    "Updating certificates for domains missing from the chain: {:?}",
-                    missing_certs
-                );
-                true
-            } else if need_renewal {
-                tracing::info!(
-                    "A certificate in the chain expires in {d} days or less, renewing it.",
-                    d = days
-                );
-                true
-            } else {
-                tracing::info!("No certificate in the chain requires renewal.");
-                false
-            }
-        }
-    };
+    let go_on = !chain_is_fresh(&config_cert).await?;
     if !go_on {
         return Ok(());
     }
