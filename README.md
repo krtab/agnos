@@ -54,24 +54,24 @@ Agnos leverages let's encrypt capability to follow DNS `NS` records. It requires
 
 <!-- TOC -->
 
-1. [Installation](#installation)
-    1. [Released binary](#released-binary)
-    1. [Archlinux AUR package](#archlinux-aur-package)
-    1. [Packaging on other systems](#packaging-on-other-systems)
-    1. [Building](#building)
-    1. [Setting capabilities to not run agnos as root](#setting-capabilities-to-not-run-agnos-as-root)
-1. [Usage](#usage)
-    1. [Let's Encrypt accounts](#lets-encrypt-accounts)
-    1. [Agnos configuration](#agnos-configuration)
-        1. [General](#general)
-        1. [Accounts](#accounts)
-        1. [Certificates](#certificates)
-    1. [Configuration of your DNS provider](#configuration-of-your-dns-provider)
-    1. [Running agnos](#running-agnos)
-    1. [Systemd units](#systemd-units)
-1. [Developers](#developers)
-    1. [Integration testing](#integration-testing)
-1. [User feedback requested](#user-feedback-requested)
+- [Installation](#installation)
+    - [Released binary](#released-binary)
+    - [Packages](#packages)
+    - [Packaging on other systems](#packaging-on-other-systems)
+    - [Building](#building)
+    - [Setting capabilities to not run agnos as root](#setting-capabilities-to-not-run-agnos-as-root)
+- [Usage](#usage)
+    - [Let's Encrypt accounts](#lets-encrypt-accounts)
+    - [Agnos configuration](#agnos-configuration)
+        - [General](#general)
+        - [Accounts](#accounts)
+        - [Certificates](#certificates)
+    - [Configuration of your DNS provider](#configuration-of-your-dns-provider)
+    - [Running agnos](#running-agnos)
+    - [Systemd units](#systemd-units)
+- [Developers](#developers)
+    - [Integration testing](#integration-testing)
+- [User feedback requested](#user-feedback-requested)
 
 <!-- /TOC -->
 
@@ -83,9 +83,13 @@ These instructions are given for a Linux system but a similar process will likel
 
 Pre-compiled binaries for Linux/amd64 are available for every tagged [release](https://github.com/krtab/agnos/releases). Be aware that they are statically built using musl and vendoring their own openssl so that they can easily be installed even on older distributions.
 
-## Archlinux AUR package
+## Packages
 
-Agnos is available in the [AUR](https://aur.archlinux.org/packages/agnos). You can install it using: `yay -S agnos`. 
+Packages are available on the following systems. Thanks to their authors! Please note that these packages are done under the sole responsibiltiy of their author and not vetted by me.
+
+- ArchLinux's [AUR](https://aur.archlinux.org/packages/agnos)
+- [NixOs](https://github.com/NixOS/nixpkgs/tree/nixos-unstable/pkgs/by-name/ag/agnos)
+- [Docker](https://hub.docker.com/r/epiceric/agnos)
 
 ## Packaging on other systems
 
