@@ -47,7 +47,7 @@ features = ["macros", "rt-multi-thread", "fs"]
 version = "1.38.2"
 
 [dependencies.tracing-subscriber]
-version = "0.3.3"
+version = "0.3.20"
 features = ["env-filter"]
 
 [dependencies.clap]
