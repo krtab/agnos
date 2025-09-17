@@ -168,10 +168,31 @@ impl DnsWorker {
         let mut serv_future = ServerFuture::new(DnsRequestHandler {
             challenges: challenges.clone(),
         });
-        let udp_socket = UdpSocket::bind(&listening_addr).await?;
+
+        let udp_socket = match UdpSocket::bind(&listening_addr).await {
+            Ok(socket) => socket,
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "Cannot bind to port 53: Permission denied. Either run with sudo or grant capability with: setcap 'cap_net_bind_service=+ep' agnos"
+                ));
+            }
+            Err(e) => return Err(e),
+        };
         serv_future.register_socket(udp_socket);
-        let tcp_listener = TcpListener::bind(&listening_addr).await?;
+
+        let tcp_listener = match TcpListener::bind(&listening_addr).await {
+            Ok(listener) => listener,
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "Cannot bind to port 53: Permission denied. Either run with sudo or grant capability with: setcap 'cap_net_bind_service=+ep' agnos"
+                ));
+            }
+            Err(e) => return Err(e),
+        };
         serv_future.register_listener(tcp_listener, Duration::from_secs(60));
+
         Ok(DnsWorker {
             serv_future,
             challenges,
