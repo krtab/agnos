@@ -161,7 +161,7 @@ There are three "levels" in the configuration:
 The general configuration level is where the IP address to listen on is provided.
 
 ```toml
-dns_listen_addr = "1.2.3.4:53"
+dns_listen_addr = "192.0.2.91:53"
 ```
 
 ### 2. Accounts
@@ -218,13 +218,15 @@ Let's encrypt DNS-01 challenge is going to ask for TXT DNS records on the follow
 - `_acme-challenge.examp.le`
 - `_acme-challenge.another.examp.le`
 
-Let's assume that agnos is going to run on a server whose public-facing IP address is `1.2.3.4`. The goal is to indicate that the three `_acme_challenge` domains cited above are managed by agnos using `NS` DNS records. `NS` records usually point to domain names, so we will also set an `A` record on `agnos-ns.doma.in` to point to `1.2.3.4` (here `agnos-ns.doma.in` is entirely arbitrary, it could be another, completely independent domain, you control, like `my-agnos.com`).
+Let's assume that agnos is going to run on a server whose public-facing IP address is `192.0.2.91`[^rfc5737]. The goal is to indicate that the three `_acme_challenge` domains cited above are managed by agnos using `NS` DNS records. `NS` records usually point to domain names, so we will also set an `A` record on `agnos-ns.doma.in` to point to `192.0.2.91` (here `agnos-ns.doma.in` is entirely arbitrary, it could be another, completely independent domain, you control, like `my-agnos.com`).
+
+[^rfc5737]: This IP (`192.0.2.19`) has no peculiar significance. It is one of the example IPs usable in documentation defined in [RFC 5737](https://datatracker.ietf.org/doc/rfc5737/).
 
 We create the following records:
 
 In the zone of `doma.in`
 ```
-agnos-ns.doma.in            A       1.2.3.4
+agnos-ns.doma.in            A       192.0.2.91
 _acme-challenge.doma.in     NS      agnos-ns.doma.in
 ```
 

@@ -2,7 +2,7 @@
 # The port should probably be 53.
 # Can also be spelled "dns_listen_adr" for
 # retro-compatibility.
-dns_listen_addr = "1.2.3.4:53"
+dns_listen_addr = "192.0.2.91:53"
 
 # A first account
 # accounts are identified by
