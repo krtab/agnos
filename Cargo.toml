@@ -20,7 +20,7 @@ include = [
     "systemd",
 ]
 categories = ["command-line-utilities"]
-rust-version = "1.70"
+rust-version = "1.81"
 
 [dependencies]
 acme2 = "0.5"
