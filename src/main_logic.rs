@@ -19,6 +19,39 @@ use crate::barrier::Barrier;
 use crate::config;
 use crate::dns::DnsChallenges;
 
+fn pkey_matches_config_type(
+    pkey: &PKey<openssl::pkey::Private>,
+    key_type: config::CertKeyType,
+) -> bool {
+    use config::CertKeyType;
+    use openssl::pkey::Id;
+    match key_type {
+        CertKeyType::EcdsaP256 => {
+            pkey.id() == Id::EC
+                && pkey
+                    .ec_key()
+                    .ok()
+                    .and_then(|ec| ec.group().curve_name())
+                    == Some(openssl::nid::Nid::X9_62_PRIME256V1)
+        }
+        CertKeyType::Rsa2048 => pkey.id() == Id::RSA && pkey.bits() == 2048,
+        CertKeyType::Rsa3072 => pkey.id() == Id::RSA && pkey.bits() == 3072,
+        CertKeyType::Rsa4096 => pkey.id() == Id::RSA && pkey.bits() == 4096,
+    }
+}
+
+fn generate_private_key(
+    key_type: config::CertKeyType,
+) -> anyhow::Result<PKey<openssl::pkey::Private>> {
+    use config::CertKeyType;
+    Ok(match key_type {
+        CertKeyType::EcdsaP256 => acme2::gen_ec_p256_private_key()?,
+        CertKeyType::Rsa2048 => acme2::gen_rsa_private_key(2048)?,
+        CertKeyType::Rsa3072 => acme2::gen_rsa_private_key(3072)?,
+        CertKeyType::Rsa4096 => acme2::gen_rsa_private_key(4096)?,
+    })
+}
+
 pub fn create_restricted_file<T>(path: impl AsRef<std::path::Path>) -> anyhow::Result<T>
 where
     std::fs::File: Into<T>,
@@ -157,6 +190,13 @@ async fn chain_is_fresh(config_cert: &config::Certificate) -> anyhow::Result<boo
                     break;
                 }
             }
+            let wrong_key_type = match try_load(&config_cert.key_output_file).await? {
+                Some(pem) => match PKey::private_key_from_pem(&pem) {
+                    Ok(pkey) => !pkey_matches_config_type(&pkey, config_cert.key_type),
+                    Err(_) => false,
+                },
+                None => false,
+            };
             if !missing_certs.is_empty() {
                 tracing::info!(
                     "Updating certificates for domains missing from the chain: {:?}",
@@ -167,6 +207,11 @@ async fn chain_is_fresh(config_cert: &config::Certificate) -> anyhow::Result<boo
                 tracing::info!(
                     "A certificate in the chain expires in {d} days or less, renewing it.",
                     d = days
+                );
+                false
+            } else if wrong_key_type {
+                tracing::info!(
+                    "Certificate key type does not match configured key_type, renewing it."
                 );
                 false
             } else {
@@ -219,6 +264,10 @@ pub async fn process_config_certificate(
             let span = debug_span!("",domain = %auth.identifier.value, wildcard = auth.wildcard);
             async move {
                 tracing::debug!("Processing authorization {}/{}", n_auth + 1, n_auth_total);
+                if matches!(auth.status, acme2::AuthorizationStatus::Valid) {
+                    tracing::debug!("Authorization already valid, skipping challenge validation.");
+                    return Ok(());
+                }
                 let challenge = auth.get_challenge("dns-01").unwrap();
                 let key = challenge
                     .key_authorization()?
@@ -288,7 +337,7 @@ pub async fn process_config_certificate(
                 (pkey, pkey_pem, true)
             }
             None => {
-                let pkey = acme2::gen_ec_p256_private_key()?;
+                let pkey = generate_private_key(config_cert.key_type)?;
                 let pem = pkey.private_key_to_pem_pkcs8()?;
                 (pkey, pem, false)
             }

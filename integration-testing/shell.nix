@@ -21,6 +21,7 @@ let
     hash = "sha256-t6BPON4eUedFXs9jFRyMfkBb0tRaLU4W9kGdtzehJdY=";
   };
   agnos_config = ./agnos/config_test.toml;
+  agnos_config_key_change = ./agnos/config_key_change.toml;
   test-script = pkgs.writeShellScriptBin "agnos-test-script" 
   ''
     set -xve
@@ -36,6 +37,38 @@ let
     $OLDWORKDIR/$CARGO_TARGET_DIR/release/agnos --debug --acme-url https://127.0.0.1:14000/dir --acme-serv-ca ${pebble_cert} ${agnos_config}
     # Purposefully duplicated to test renewal
     $OLDWORKDIR/$CARGO_TARGET_DIR/release/agnos --debug --acme-url https://127.0.0.1:14000/dir --acme-serv-ca ${pebble_cert} ${agnos_config}
+
+    # Verify generated key types
+    check_key_type() {
+      local file=$1 pattern=$2
+      local key_line
+      key_line=$(${pkgs.openssl}/bin/openssl pkey -in "$file" -text -noout | grep "Private-Key")
+      echo "$key_line" | grep -q "$pattern" \
+        || { echo "FAIL: $file does not match pattern '$pattern'. Got: $key_line"; exit 1; }
+    }
+    check_key_type cert_key_rsa2048.pem "2048 bit"
+    check_key_type cert_key_rsa4096.pem "4096 bit"
+    check_key_type cert_key_ecdsa.pem "256 bit"
+
+    check_cert_algo() {
+      local file=$1 pattern=$2
+      local algo_line
+      algo_line=$(${pkgs.openssl}/bin/openssl x509 -in "$file" -text -noout | grep "Public Key Algorithm")
+      echo "$algo_line" | grep -q "$pattern" \
+        || { echo "FAIL: $file does not match pattern '$pattern'. Got: $algo_line"; exit 1; }
+    }
+    check_cert_algo fullchain_rsa2048.pem "rsaEncryption"
+    check_cert_algo fullchain_rsa4096.pem "rsaEncryption"
+    check_cert_algo fullchain_ecdsa.pem "id-ecPublicKey"
+
+    # Test key_type change detection: key-change.agnos.test was issued with rsa_2048,
+    # now reconfigured as rsa_4096. Agnos must detect the mismatch and renew immediately.
+    check_key_type cert_key_change.pem "2048 bit"
+    check_cert_algo fullchain_key_change.pem "rsaEncryption"
+    $OLDWORKDIR/$CARGO_TARGET_DIR/release/agnos --debug --acme-url https://127.0.0.1:14000/dir --acme-serv-ca ${pebble_cert} ${agnos_config_key_change}
+    check_key_type cert_key_change.pem "4096 bit"
+    check_cert_algo fullchain_key_change.pem "rsaEncryption"
+
     cd $OLDWORKDIR
     rm -rf $WORKDIR
   '';

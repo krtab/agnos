@@ -32,3 +32,29 @@ private_key_path = "priv_key_2.pem"
 domains = ["c.agnos.test","subdomain.c.agnos.test"]
 fullchain_output_file = "fullchain2.pem"
 key_output_file = "cert_key_2.pem"
+
+# Certificates testing explicit key types
+[[accounts.certificates]]
+domains = ["rsa2048.agnos.test"]
+fullchain_output_file = "fullchain_rsa2048.pem"
+key_output_file = "cert_key_rsa2048.pem"
+key_type = "rsa_2048"
+
+[[accounts.certificates]]
+domains = ["rsa4096.agnos.test"]
+fullchain_output_file = "fullchain_rsa4096.pem"
+key_output_file = "cert_key_rsa4096.pem"
+key_type = "rsa_4096"
+
+[[accounts.certificates]]
+domains = ["ecdsa.agnos.test"]
+fullchain_output_file = "fullchain_ecdsa.pem"
+key_output_file = "cert_key_ecdsa.pem"
+key_type = "ecdsa_p256"
+
+# Certificate used to test key_type change detection
+[[accounts.certificates]]
+domains = ["key-change.agnos.test"]
+fullchain_output_file = "fullchain_key_change.pem"
+key_output_file = "cert_key_change.pem"
+key_type = "rsa_2048"

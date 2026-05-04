@@ -1,0 +1,14 @@
+# Minimal config used to test key_type change detection.
+# This config references the same account and certificate files as config_test.toml
+# but switches key-change.agnos.test from rsa_2048 to rsa_4096.
+dns_listen_addr = "0.0.0.0:8053"
+
+[[accounts]]
+email = "contac2@mail2.test.com"
+private_key_path = "priv_key_2.pem"
+
+[[accounts.certificates]]
+domains = ["key-change.agnos.test"]
+fullchain_output_file = "fullchain_key_change.pem"
+key_output_file = "cert_key_change.pem"
+key_type = "rsa_4096"

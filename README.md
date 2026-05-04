@@ -176,8 +176,10 @@ private_key_path = "priv_key.pem"
 
 ### 3. Certificates
 
-For each account, several certificates can be ordered. Each certificate can cover multiple domains. On disk, a certificate is represented by two files: the full certificate chain, and the private key of the certificate (different from the account private key). This certificate private key is regenerated on each certificate renewal by default but if one is already present on disk, it can be reused by setting the `reuse_private_key` option to true
+For each account, several certificates can be ordered. Each certificate can cover multiple domains. On disk, a certificate is represented by two files: the full certificate chain, and the private key of the certificate (different from the account private key). This certificate private key is regenerated on each certificate renewal by default but if one is already present on disk, it can be reused by setting the `reuse_private_key` option to true.
 In the configuration file, `accounts.certificates` is a TOML [array of tables](https://toml.io/en/v1.0.0#array-of-tables) meaning that several certificates can be attached to one account by writing them one after the other.
+
+The type of private key generated for the certificate can be configured via the `key_type` option. Accepted values are `ecdsa_p256` (default), `rsa_2048`, `rsa_3072`, and `rsa_4096`.
 
 ```toml
 # A first certificate ordered for that account.
@@ -190,7 +192,10 @@ key_output_file = "cert_key_A.pem"
 renewal_days_advance = 30
 # Regenerate a private key for the certificate on each renewal
 # (this is the default value and can be omitted).
-reuse_private_key = false 
+reuse_private_key = false
+# Key type for the certificate (default: ecdsa_p256).
+# Accepted values: ecdsa_p256, rsa_2048, rsa_3072, rsa_4096
+key_type = "ecdsa_p256"
 
 # A second certificate ordered for that account.
 [[accounts.certificates]]
