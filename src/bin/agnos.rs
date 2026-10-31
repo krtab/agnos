@@ -111,7 +111,11 @@ async fn main() -> anyhow::Result<()> {
     } else {
         ACME_URL_STAGING.to_string()
     };
-    let mut http_client_bldr = reqwest::ClientBuilder::new();
+    let mut http_client_bldr = reqwest::ClientBuilder::new().user_agent(concat!(
+        env!("CARGO_PKG_NAME"),
+        "/",
+        env!("CARGO_PKG_VERSION")
+    ));
     if let Some(cert_path) = cli_ops.get_one::<String>("acme-serv-ca") {
         let file_content = std::fs::read(cert_path)?;
         let certif = Certificate::from_pem(&file_content)?;
